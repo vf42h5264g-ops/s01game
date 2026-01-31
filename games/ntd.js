@@ -7,7 +7,7 @@
 // - v03負け時：ランダム台詞のみ表示（固定文なし）
 // =====================================
 
-export const NtdGame = {
+export const NTDGame = {
   id: "destroy",
 
   _active: false,
