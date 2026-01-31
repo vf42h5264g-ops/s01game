@@ -30,6 +30,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const donateBtn = document.getElementById("donateBtn");
   const shotBtn = document.getElementById("shotBtn");
 
+  const memorySubModes = document.getElementById("memorySubModes");
+let memoryMenuOpen = false;
+
+function toggleMemoryMenu(open) {
+  memoryMenuOpen = (open ?? !memoryMenuOpen);
+  if (memorySubModes) {
+    memorySubModes.classList.toggle("hidden", !memoryMenuOpen);
+  }
+}
+
+
   // ===== basic guards =====
   if (!screens.start || !screens.game || !board || !countdownEl) {
     alert("必要なHTML idが見つかりません（startScreen/gameScreen/board/countdown）");
