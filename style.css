@@ -378,3 +378,18 @@ button:active{ transform: scale(0.98); }
 .glow2{ filter: drop-shadow(0 0 12px rgba(255,255,255,.30)) drop-shadow(0 0 22px rgba(255,0,120,.18)); }
 .glow3{ filter: drop-shadow(0 0 14px rgba(255,255,255,.35)) drop-shadow(0 0 28px rgba(0,200,255,.20)); }
 
+.subModes{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: -6px; /* 親ボタンに少し近づける */
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.subModeBtn{
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: none;
+}
