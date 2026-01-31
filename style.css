@@ -1,1 +1,381 @@
+/* =====================
+   Quattro Vageena : Last Call
+   style.css（競合なし・iPhone安定）
+===================== */
+
+/* Base */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body{
+  margin: 0;
+  color: #f5f1e8;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #000;
+  -webkit-text-size-adjust: 100%;
+}
+
+.hidden { display: none !important; }
+
+/* Screen */
+.screen{
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px 16px;
+}
+
+/* =====================
+   Start Screen
+===================== */
+#startScreen{
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at top, #3a0f14 0%, #1b070a 40%, #000 100%);
+}
+
+#startScreen h1{
+  margin: 0;
+  font-size: 38px;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+  text-align: center;
+}
+
+.subtitle{
+  margin-top: -6px;
+  font-size: 14px;
+  letter-spacing: 0.28em;
+  opacity: 0.9;
+}
+
+/* モードボタン */
+.modeBtns{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(360px, 86vw);
+  margin-top: 10px;
+}
+
+.modeBtn{
+  user-select: none;
+  cursor: pointer;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #e53935;
+  color: #fff;
+  text-align: center;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.modeBtn:active{
+  transform: scale(0.98);
+  filter: brightness(0.95);
+}
+
+/* NT-Dボタン */
+.modeBtn[data-mode="destroy"]{
+  border: 1px solid rgba(255,255,255,0.10);
+  color: #fff;
+  transition: color 3s linear, text-shadow 3s linear;
+}
+
+.modeBtn[data-mode="destroy"].charging{
+  color: #ff3bd4 !important;
+  text-shadow: 0 0 18px rgba(255, 60, 212, 0.55);
+}
+
+/* Start画面ネオン */
+#startScreen.neon{
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 60, 60, 0.18) 0%, rgba(0,0,0,0) 45%),
+    radial-gradient(circle at 80% 30%, rgba(255, 0, 120, 0.10) 0%, rgba(0,0,0,0) 50%),
+    radial-gradient(circle at top, #4a1016 0%, #1b070a 40%, #000 100%);
+}
+
+#startScreen.neon::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(255,0,80,0.10), rgba(0,0,0,0) 60%),
+    radial-gradient(circle at 50% 15%, rgba(255,60,60,0.22), rgba(0,0,0,0) 55%);
+  mix-blend-mode: screen;
+}
+
+#startScreen.neon h1,
+#startScreen.neon .subtitle{
+  text-shadow:
+    0 0 10px rgba(255, 40, 40, 0.25),
+    0 0 22px rgba(255, 0, 120, 0.18);
+}
+
+/* 1秒チカチカ（必要な時だけ .flicker を付ける） */
+@keyframes neonFlickerFast{
+  0%,100%{ filter: brightness(1); }
+  10%{ filter: brightness(1.18); }
+  12%{ filter: brightness(0.85); }
+  16%{ filter: brightness(1.28); }
+  20%{ filter: brightness(0.80); }
+  26%{ filter: brightness(1.22); }
+  40%{ filter: brightness(1.10); }
+  45%{ filter: brightness(0.92); }
+  55%{ filter: brightness(1.20); }
+}
+#startScreen.flicker{
+  animation: neonFlickerFast 1s linear infinite;
+}
+
+/* 下のテキスト（フッターに被らない位置） */
+.footerText{
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px + 74px + 10px);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  z-index: 300;
+  pointer-events: none;
+}
+
+/* =========================
+   フッターバー（下段4ボタン）
+========================= */
+
+/* 旧absolute/transform系の事故防止 */
+#shotBtn, #helpBtn, #donateBtn, #soundBtn{
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+}
+
+.footerBtns{
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+
+  width: min(92vw, 420px);
+  height: 74px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 14px;
+
+  padding: 10px 14px;
+  border-radius: 22px;
+
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(6px);
+
+  z-index: 999;
+}
+
+.footerBtns button{
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+.footerBtns button { display:grid; place-items:center; padding:0; line-height:1; }
+
+  /* ✅ 中央寄せを強制 */
+  display: grid;
+  place-items: center;
+
+  /* ✅ 絵文字ズレ対策 */
+  padding: 0;
+  line-height: 1;
+  font-family: "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji", system-ui, -apple-system, sans-serif;
+
+  font-size: 26px;
+
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.10);
+  color: #fff;
+
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+
+  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+  transition: transform 0.12s ease, filter 0.12s ease, background 0.12s ease;
+}
+
+
+.footerBtns button:active{
+  transform: scale(0.92);
+  filter: brightness(1.05);
+}
+
+#donateBtn{
+  border-color: rgba(255,215,100,0.25);
+  background: rgba(255,215,100,0.16);
+}
+
+/* =====================
+   Help / Result / Game
+===================== */
+#helpScreen, #resultScreen, #gameScreen{
+  background: radial-gradient(circle at top, #120507 0%, #000 65%);
+}
+
+button{
+  padding: 12px 18px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+}
+button:active{ transform: scale(0.98); }
+
+#countdown{
+  font-size: 56px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+#missArea{
+  min-height: 26px;
+  margin-bottom: 10px;
+  opacity: 0.9;
+}
+
+/* Board */
+#board{
+  display: grid;
+  gap: 10px;
+  width: min(440px, 92vw);
+  justify-content: center;
+}
+
+#board.layout-easy{ grid-template-columns: repeat(3, 1fr); }
+#board.layout-12{ grid-template-columns: repeat(4, 1fr); }
+
+.card{
+  background: rgba(255,255,255,0.06);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.card img{
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: block;
+  object-fit: cover;
+}
+
+/* Result mode label */
+.resultMode{
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+/* ===== CoinToss (board内UI) ===== */
+.ctRoot{
+  width: min(520px, 92vw);
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+  padding: 10px 0 30px;
+}
+
+.ctTitle{
+  text-align:center;
+  font-weight: 900;
+  letter-spacing: .08em;
+  font-size: 20px;
+}
+
+.ctSub{
+  text-align:center;
+  opacity: .75;
+  font-size: 12px;
+  letter-spacing: .06em;
+  margin-top:-8px;
+}
+
+.ctCard{
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.ctRow{
+  display:flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.ctRowCenter{
+  justify-content: center;
+  gap: 18px;
+}
+
+.ctLabel{ opacity:.75; }
+.ctValue{ font-weight:800; }
+
+.ctCoin{
+  width: 160px;
+  height: 160px;
+  margin: 0 auto;
+  display:block;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 30px rgba(0,0,0,.45));
+}
+
+.ctMsg{
+  text-align:center;
+  font-weight:700;
+  min-height: 24px;
+}
+
+.ctBtns{
+  display:flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.ctBtns button{
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.ctLink{
+  background: transparent;
+  color: rgba(255,255,255,0.85);
+  border: 1px solid rgba(255,255,255,0.14);
+}
+
+.spinning{
+  animation: ctSpin 0.12s linear infinite;
+}
+@keyframes ctSpin{
+  from{ transform: rotateY(0deg); }
+  to{ transform: rotateY(180deg); }
+}
+
+/* streak glow */
+.glow1{ filter: drop-shadow(0 0 10px rgba(255,255,255,.25)) drop-shadow(0 0 18px rgba(255,120,0,.15)); }
+.glow2{ filter: drop-shadow(0 0 12px rgba(255,255,255,.30)) drop-shadow(0 0 22px rgba(255,0,120,.18)); }
+.glow3{ filter: drop-shadow(0 0 14px rgba(255,255,255,.35)) drop-shadow(0 0 28px rgba(0,200,255,.20)); }
 
