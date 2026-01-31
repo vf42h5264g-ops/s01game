@@ -212,12 +212,28 @@ export const CoinTossGame = {
 
     // ====== iPhone向け：pointerdownで統一 ======
     function onTap(el, fn) {
-      el.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        ctx?.ensureAudio?.(); // Quattro側が用意してれば音解錠
-        fn(e);
-      }, { passive: false });
-    }
+  if (!el) return;
+
+  el.addEventListener("pointerdown", (e) => {
+    // ✅ disabled や hidden の時は反応させない
+    if (el.disabled) return;
+    if (el.classList?.contains("hidden")) return;
+
+    e.preventDefault();
+    ctx?.ensureAudio?.();
+    fn(e);
+  }, { passive: false });
+
+  // ✅ clickも保険で（環境差対策）
+  el.addEventListener("click", (e) => {
+    if (el.disabled) return;
+    if (el.classList?.contains("hidden")) return;
+
+    ctx?.ensureAudio?.();
+    fn(e);
+  });
+}
+
 
     // ====== 戻る（CT内） ======
     root.querySelectorAll("[data-ct-go='start']").forEach((btn) => {
@@ -235,7 +251,7 @@ export const CoinTossGame = {
     // Back（Quattroへ戻る）
     onTap(btnBack, () => {
       // Quattroのstartへ戻す
-      ctx?.goStart?.();
+      ctx?.goToStart?.();
     });
 
     // QUICK
