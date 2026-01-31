@@ -215,7 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
     easy: MemoryGame,
     normal: MemoryGame,
     hard: MemoryGame,
-    destroy: NtdGame,
+    destroy: NTDGame,
     cointoss: CoinTossGame,
   };
 
