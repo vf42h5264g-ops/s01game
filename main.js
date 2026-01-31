@@ -1,6 +1,6 @@
 // main.js
 import { MemoryGame } from "./games/memory.js";
-import { NtdGame } from "./games/ntd.js";
+import { NTDGame } from "./games/ntd.js";
 import { CoinTossGame } from "./games/cointoss.js";
 
 document.addEventListener("DOMContentLoaded", () => {
