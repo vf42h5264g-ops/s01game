@@ -186,17 +186,15 @@ body{
   width: 56px;
   height: 56px;
   border-radius: 999px;
-.footerBtns button { display:grid; place-items:center; padding:0; line-height:1; }
 
-  /* ✅ 中央寄せを強制 */
+  /* 中央寄せ */
   display: grid;
   place-items: center;
 
-  /* ✅ 絵文字ズレ対策 */
+  /* 絵文字ズレ対策 */
   padding: 0;
   line-height: 1;
   font-family: "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji", system-ui, -apple-system, sans-serif;
-
   font-size: 26px;
 
   border: 1px solid rgba(255,255,255,0.12);
@@ -211,6 +209,7 @@ body{
   box-shadow: 0 10px 24px rgba(0,0,0,0.35);
   transition: transform 0.12s ease, filter 0.12s ease, background 0.12s ease;
 }
+
 
 
 .footerBtns button:active{
