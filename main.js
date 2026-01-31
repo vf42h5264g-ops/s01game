@@ -1,6 +1,6 @@
 // main.js
 import { MemoryGame } from "./games/memory.js";
-import { NTDGame } from "./games/ntd.js";
+import { NtdGame } from "./games/ntd.js";       // ★ import名を合わせる
 import { CoinTossGame } from "./games/cointoss.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -25,7 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const retryBtn = document.getElementById("retryBtn");
   const soundBtn = document.getElementById("soundBtn");
 
-  // donate / shot はあなたの既存仕様に合わせて後で繋げばOK
   const donateBtn = document.getElementById("donateBtn");
   const shotBtn = document.getElementById("shotBtn");
 
@@ -40,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
     screens[name]?.classList.remove("hidden");
   }
 
-  // ===== sound (あなたの既存の音システムに合わせて入れ替え可) =====
+  // ===== sound setting =====
   let soundEnabled = true;
   try {
     const saved = localStorage.getItem("soundEnabled");
@@ -53,21 +52,24 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   renderSoundIcon();
 
-  // ここは「あなたが今使ってる WebAudio + fallback」実装に差し替えてOK。
-  // 今回は“最小”としてHTMLAudioだけ置いとく（動作確認用）
-  const SFX = {
+  // ===== HTMLAudio (iPhone安定寄り：clone再生) =====
+  const SFX_BASE = {
     beep: new Audio("sound/beep.wav"),
     beep2: new Audio("sound/beep2.wav"),
     go: new Audio("sound/go.wav"),
   };
-  Object.values(SFX).forEach(a => { a.preload = "auto"; a.volume = 1.0; });
+  Object.values(SFX_BASE).forEach(a => { a.preload = "auto"; a.volume = 1.0; });
 
   let audioUnlocked = false;
+  let audioPrimed = false;
+
+  // iOS解錠（無音で短く） + 初回の「ピコピコ」を抑えるため prime を一度だけ
   function ensureAudio() {
     if (audioUnlocked) return;
+
     audioUnlocked = true;
-    // iOS解錠：無音で一瞬再生
-    const a = SFX.beep;
+    // 解錠は beep だけでOK（goを触らない）
+    const a = SFX_BASE.beep;
     const v = a.volume;
     a.volume = 0.0;
     try { a.currentTime = 0; } catch {}
@@ -75,20 +77,48 @@ document.addEventListener("DOMContentLoaded", () => {
       a.pause();
       try { a.currentTime = 0; } catch {}
       a.volume = v;
-    }).catch(() => { a.volume = v; });
+      // 解錠後に prime（デコード促進）を一度だけ
+      primeAudioOnce();
+    }).catch(() => {
+      a.volume = v;
+      primeAudioOnce();
+    });
+  }
+
+  // デコード促進（音は鳴らさない/聞こえないようにする）
+  function primeAudioOnce() {
+    if (audioPrimed) return;
+    audioPrimed = true;
+
+    // 3種類を無音でチョン再生→停止（環境によっては効く）
+    ["beep", "beep2", "go"].forEach(key => {
+      const base = SFX_BASE[key];
+      if (!base) return;
+      const tmp = base.cloneNode();
+      tmp.volume = 0.0;
+      try { tmp.currentTime = 0; } catch {}
+      tmp.play().then(() => {
+        tmp.pause();
+        try { tmp.currentTime = 0; } catch {}
+      }).catch(() => {});
+    });
   }
 
   function playSfx(key) {
     if (!soundEnabled) return;
-    const base = SFX[key];
+    const base = SFX_BASE[key];
     if (!base) return;
+
+    // iOSは未解錠だと鳴らないことがあるので保険
+    if (!audioUnlocked) return;
+
     const a = base.cloneNode();
     a.volume = base.volume;
     try { a.currentTime = 0; } catch {}
     a.play().catch(() => {});
   }
 
-  // ===== countdown（0だけbeep2）=====
+  // ===== countdown（基準時刻方式 + 初回ピコピコ抑制）=====
   let countdownRunning = false;
   let raf = 0;
   let finishTimer = 0;
@@ -101,18 +131,20 @@ document.addEventListener("DOMContentLoaded", () => {
     countdownRunning = false;
   }
 
+  // ※ onFinish: カウント後にゲーム開始処理
   function startCountdown(onFinish) {
     cancelCountdown();
     countdownRunning = true;
 
     setScreen("game");
     board.innerHTML = "";
-    missArea && (missArea.textContent = "");
+    if (missArea) missArea.textContent = "";
     countdownEl.classList.remove("hidden");
 
     const t0 = performance.now();
-    const seq = [3,2,1,0];
-    let last = null;
+    const seq = [3, 2, 1, 0];
+    let lastShown = null;
+    let firstBeepDone = false;
 
     const tick = () => {
       if (!countdownRunning) return;
@@ -121,11 +153,23 @@ document.addEventListener("DOMContentLoaded", () => {
       const idx = Math.min(3, Math.floor(elapsed));
       const show = seq[idx];
 
-      if (show !== last) {
+      if (show !== lastShown) {
         countdownEl.textContent = String(show);
-        last = show;
-        if (show === 0) playSfx("beep2");
-        else playSfx("beep");
+        lastShown = show;
+
+        // ★初回だけ「解錠直後の音ズレ/多重」を避けるため、1フレーム遅らせて鳴らす
+        // （iPhoneで“初回だけピコピコ鳴り響く”の対策）
+        if (!firstBeepDone) {
+          firstBeepDone = true;
+          requestAnimationFrame(() => {
+            if (!countdownRunning) return;
+            if (show === 0) playSfx("beep2");
+            else playSfx("beep");
+          });
+        } else {
+          if (show === 0) playSfx("beep2");
+          else playSfx("beep");
+        }
       }
 
       if (show === 0 && elapsed >= 3.05) {
@@ -149,7 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
     easy: MemoryGame,
     normal: MemoryGame,
     hard: MemoryGame,
-    destroy: NTDGame,
+    destroy: NtdGame,      // ★ NtdGame に統一
     cointoss: CoinTossGame,
   };
 
@@ -165,9 +209,8 @@ document.addEventListener("DOMContentLoaded", () => {
     return mode;
   }
 
-  function goStart() {
+  function goToStart() {
     cancelCountdown();
-    // overlay等が残るゲームもあるので destroy させる
     if (currentGame?.destroy) currentGame.destroy(ctx);
     board.innerHTML = "";
     setScreen("start");
@@ -180,29 +223,40 @@ document.addEventListener("DOMContentLoaded", () => {
     setScreen,
     playSfx,
     ensureAudio,
-    goStart,
+
+    // ★ ntd.js が呼ぶ名前に合わせる
+    goToStart,
+
+    // Memory/NT-D が使う Result 画面共通表示
     showResult({ title, timeSec, mode }) {
-      // 結果画面を使うゲーム向け（コイントスは自前UIなので使わなくてOK）
       if (resultMode) resultMode.textContent = modeLabel(mode);
       if (resultText) resultText.textContent = title || "";
       if (timeText) timeText.textContent = timeSec ? `TIME : ${timeSec}s` : "";
       setScreen("result");
     },
+
     getMode() { return currentMode; },
   };
 
   function startSelectedMode() {
-    // 旧ゲーム掃除
     cancelCountdown();
+
+    // 前ゲーム掃除
     if (currentGame?.destroy) currentGame.destroy(ctx);
     board.innerHTML = "";
 
     currentGame = games[currentMode];
 
-    // コイントスは「カウントダウン無し」で即開始の方が気持ちいいので分岐
+    if (!currentGame) {
+      alert("ゲームが見つかりません: " + currentMode);
+      goToStart();
+      return;
+    }
+
+    // コイントスはカウントダウン無しで即開始
     if (currentMode === "cointoss") {
       setScreen("game");
-      currentGame.start(ctx);
+      currentGame.start(ctx, { mode: currentMode });
       return;
     }
 
@@ -215,6 +269,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".modeBtn").forEach(btn => {
     btn.addEventListener("pointerdown", (e) => {
       e.preventDefault();
+
+      // ★最初の操作で必ず音解錠（ここで “解錠+prime” まで完了）
       ensureAudio();
 
       currentMode = btn.dataset.mode || "easy";
@@ -245,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
   backBtn?.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     ensureAudio();
-    goStart();
+    goToStart();
   }, { passive: false });
 
   retryBtn?.addEventListener("pointerdown", (e) => {
@@ -254,7 +310,6 @@ document.addEventListener("DOMContentLoaded", () => {
     startSelectedMode();
   }, { passive: false });
 
-  // shot/donate は今まで通りここで繋げる
   shotBtn?.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     ensureAudio();
@@ -264,11 +319,12 @@ document.addEventListener("DOMContentLoaded", () => {
   donateBtn?.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     ensureAudio();
-    // ここはあなたのPayPay導線（overlay/別画面）を後で実装
+    // PayPay導線は後でここに実装
     alert("支援ありがとうございます！(仮)");
   }, { passive: false });
 
   // init
   setScreen("start");
 });
+
 
