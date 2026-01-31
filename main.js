@@ -315,12 +315,32 @@ function toggleMemoryMenu(open) {
 
   // ===== events =====
   document.querySelectorAll(".modeBtn").forEach(btn => {
-    onTap(btn, () => {
+  btn.addEventListener("click", (e) => {
+    const mode = btn.dataset.mode;
+
+    // MEMORY-GAME を押したら、サブ選択を開閉するだけ（ゲーム開始しない）
+    if (mode === "memory") {
       ensureAudio();
-      currentMode = btn.dataset.mode || "easy";
-      startSelectedMode();
-    });
+      toggleMemoryMenu();
+      return;
+    }
+
+    // サブモード（easy/normal/hard） or 他ゲーム（destroy/cointoss）
+    ensureAudio();
+    currentMode = mode || "easy";
+
+    // サブを選んだら閉じる（見た目スッキリ）
+    if (mode === "easy" || mode === "normal" || mode === "hard") {
+      toggleMemoryMenu(false);
+    } else {
+      // 他ゲーム選んだ時も閉じる
+      toggleMemoryMenu(false);
+    }
+
+    startSelectedMode();
   });
+});
+
 
   onTap(helpBtn, () => { ensureAudio(); setScreen("help"); });
 
