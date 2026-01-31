@@ -1,1 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quattro Vageena : Last Call</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ===== START ===== -->
+<div id="startScreen" class="screen">
+  <h1>Quattro Vageena</h1>
+  <div class="subtitle">— Last Call —</div>
+
+  <div class="modeBtns">
+    <div class="modeBtn" data-mode="easy">EASY</div>
+    <div class="modeBtn" data-mode="normal">NORMAL</div>
+    <div class="modeBtn" data-mode="hard">HARD</div>
+    <div class="modeBtn" data-mode="destroy">NT-D</div>
+    <div class="modeBtn" data-mode="cointoss">COIN</div>
+  </div>
+
+  <div class="footerBtns">
+  <button id="shotBtn">🥃</button>
+  <button id="helpBtn">❓</button>
+  <button id="donateBtn">🤝</button>
+  <button id="soundBtn">🔊</button>
+</div>
+
+
+  <div class="footerText">One last game before closing.</div>
+</div>
+
+<!-- ===== HELP ===== -->
+<div id="helpScreen" class="screen hidden">
+  <h2>あそびかた</h2>
+  <p>カードをめくって同じ絵をそろえよう！</p>
+  <p>HARDは5回ミスでBAD END</p>
+  <p>NT-Dは、危険なカードを引いたら即アウトの特別モード。</p>
+  <button id="backFromHelp">戻る</button>
+</div>
+
+<!-- ===== GAME ===== -->
+<div id="gameScreen" class="screen hidden">
+  <div id="countdown" class="hidden"></div>
+  <div id="missArea"></div>
+  <div id="board"></div>
+</div>
+
+<!-- ===== RESULT ===== -->
+<div id="resultScreen" class="screen hidden">
+  <div id="resultMode" class="resultMode"></div>
+  <h2 id="resultText"></h2>
+  <p id="timeText"></p>
+  <button id="retryBtn">もう1回</button>
+  <button id="backBtn">モード選択</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
 
