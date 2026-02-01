@@ -404,15 +404,34 @@ document.querySelectorAll(".modeBtn").forEach(btn => {
   });
 
   // =========================
-  // 🤝 Donate（PayPayリンクへ）
-  // =========================
-  const PAYPAY_URL = "https://qr.paypay.ne.jp/p2p01_ldqe82SQtNdc2a7q";
+  // 投げ銭モーダル
+  // =====================
+  function showThanksToast() {
+    const old = document.getElementById("thanksToast");
+    if (old) old.remove();
 
-  donateBtn?.addEventListener("click", () => {
-    ensureAudio();
-    // 新規タブ（スマホだと同一タブになる場合あり）
-    window.open(PAYPAY_URL, "_blank", "noopener,noreferrer");
-  });
+    const toast = document.createElement("div");
+    toast.id = "thanksToast";
+    toast.textContent = "ご支援ありがとうございます！制作の励みになります 🙏";
+    toast.style.position = "fixed";
+    toast.style.left = "50%";
+    toast.style.transform = "translateX(-50%)";
+    toast.style.bottom = "calc(env(safe-area-inset-bottom, 0px) + 110px)";
+    toast.style.zIndex = "99999";
+    toast.style.padding = "10px 14px";
+    toast.style.borderRadius = "999px";
+    toast.style.background = "rgba(0,0,0,0.72)";
+    toast.style.border = "1px solid rgba(255,255,255,0.16)";
+    toast.style.color = "#fff";
+    toast.style.fontWeight = "800";
+    toast.style.letterSpacing = "0.04em";
+    toast.style.fontSize = "14px";
+    toast.style.boxShadow = "0 18px 44px rgba(0,0,0,0.45)";
+    toast.style.pointerEvents = "none";
+
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2200);
+  }
 
   // =========================
   // init
