@@ -7,7 +7,7 @@ export const CoinTossGame = {
     if (ctx?.board) ctx.board.innerHTML = "";
   },
 
-  start(ctx) {
+  start(ctx, opt = {}) {
     const board = ctx.board;
     board.innerHTML = "";
 
@@ -39,6 +39,42 @@ export const CoinTossGame = {
       { pts: 30, name: "Lord of Luck" },
       { pts: 50, name: "Architect of Fate" },
     ];
+
+    // ========= 共通ユーティリティ =========
+    function todayStr() {
+      const d = new Date();
+      const y = String(d.getFullYear());
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+    function readInt(key, fallback) {
+      const v = window.localStorage.getItem(key);
+      const n = Number(v);
+      return Number.isFinite(n) ? n : fallback;
+    }
+    function writeInt(key, value) {
+      window.localStorage.setItem(key, String(value));
+    }
+    function pickTitle(points) {
+      let current = null;
+      for (const t of TITLES) if (points >= t.pts) current = t;
+      return current ? current.name : "No Title Yet";
+    }
+    function randResult() {
+      return Math.random() < 0.5 ? "HEAD" : "TAIL";
+    }
+    function wait(ms) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+    function setSpinning(imgEl, spinning) {
+      imgEl.classList.toggle("spinning", spinning);
+    }
+    async function tossAnimation(imgEl, durationMs = 1100) {
+      setSpinning(imgEl, true);
+      await wait(durationMs);
+      setSpinning(imgEl, false);
+    }
 
     // ========= 状態 =========
     const state = {
@@ -159,85 +195,50 @@ export const CoinTossGame = {
     const chainStreakEl = screens.chain.querySelector("#ctChainStreak");
     const chainBestEl = screens.chain.querySelector("#ctChainBest");
 
-    // ====== 共通ユーティリティ ======
-    function todayStr() {
-      const d = new Date();
-      const y = String(d.getFullYear());
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    }
-    function readInt(key, fallback) {
-      const v = window.localStorage.getItem(key);
-      const n = Number(v);
-      return Number.isFinite(n) ? n : fallback;
-    }
-    function writeInt(key, value) {
-      window.localStorage.setItem(key, String(value));
-    }
-    function pickTitle(points) {
-      let current = null;
-      for (const t of TITLES) if (points >= t.pts) current = t;
-      return current ? current.name : "No Title Yet";
-    }
+    // ====== 画面切り替え ======
     function show(name) {
       Object.values(screens).forEach((el) => el.classList.add("hidden"));
       screens[name].classList.remove("hidden");
     }
-    function randResult() {
-      return Math.random() < 0.5 ? "HEAD" : "TAIL";
-    }
-    function wait(ms) {
-      return new Promise((resolve) => window.setTimeout(resolve, ms));
-    }
-    function setSpinning(imgEl, spinning) {
-      imgEl.classList.toggle("spinning", spinning);
-    }
-    async function tossAnimation(imgEl, durationMs = 1100) {
-      setSpinning(imgEl, true);
-      await wait(durationMs);
-      setSpinning(imgEl, false);
-    }
+
     function refreshStartUI() {
       titlePointsEl.textContent = String(state.titlePoints);
       titleNameEl.textContent = pickTitle(state.titlePoints);
       const last = window.localStorage.getItem(LS.dailyDate);
       dailyStatusEl.textContent = (last === todayStr()) ? "Completed" : "Available";
     }
+
     function addTitlePoint(n) {
       state.titlePoints += n;
       writeInt(LS.titlePoints, state.titlePoints);
       refreshStartUI();
     }
 
-    // ====== iPhone向け：pointerdownで統一 ======
+    // ====== iPhone向け：pointerdown + click（disabled/hidden ガード） ======
     function onTap(el, fn) {
-  if (!el) return;
+      if (!el) return;
 
-  el.addEventListener("pointerdown", (e) => {
-    // ✅ disabled や hidden の時は反応させない
-    if (el.disabled) return;
-    if (el.classList?.contains("hidden")) return;
+      el.addEventListener("pointerdown", (e) => {
+        if (el.disabled) return;
+        if (el.classList?.contains("hidden")) return;
+        e.preventDefault();
+        ctx?.ensureAudio?.();
+        fn(e);
+      }, { passive: false });
 
-    e.preventDefault();
-    ctx?.ensureAudio?.();
-    fn(e);
-  }, { passive: false });
-
-  // ✅ clickも保険で（環境差対策）
-  el.addEventListener("click", (e) => {
-    if (el.disabled) return;
-    if (el.classList?.contains("hidden")) return;
-
-    ctx?.ensureAudio?.();
-    fn(e);
-  });
-}
-
+      el.addEventListener("click", (e) => {
+        if (el.disabled) return;
+        if (el.classList?.contains("hidden")) return;
+        ctx?.ensureAudio?.();
+        fn(e);
+      });
+    }
 
     // ====== 戻る（CT内） ======
     root.querySelectorAll("[data-ct-go='start']").forEach((btn) => {
       onTap(btn, () => {
+        // 念のため：投げ中を解除
+        state.tossing = false;
         refreshStartUI();
         show("start");
       });
@@ -250,23 +251,27 @@ export const CoinTossGame = {
 
     // Back（Quattroへ戻る）
     onTap(btnBack, () => {
-      // Quattroのstartへ戻す
+      state.tossing = false;
       ctx?.goToStart?.();
     });
 
+    // =========================
     // QUICK
+    // =========================
     function resetQuick() {
       quickCoin.src = IMG.HEAD;
       quickResult.textContent = "Tap to toss";
       quickTossBtn.disabled = false;
+      state.tossing = false;
     }
 
     onTap(quickTossBtn, async () => {
       if (state.tossing) return;
       state.tossing = true;
+
       quickTossBtn.disabled = true;
       quickResult.textContent = "Tossing...";
-      ctx?.playSfx?.("beep"); // あれば鳴る
+      ctx?.playSfx?.("beep");
 
       const r = randResult();
       await tossAnimation(quickCoin, 1100);
@@ -277,21 +282,29 @@ export const CoinTossGame = {
       state.tossing = false;
     });
 
+    // =========================
     // DAILY
+    // - 既に今日完了してたら pick ボタンを無効化
+    // - 成功したら：TitlePoint +1 / 共通ポイント +5
+    // =========================
     function enterDaily() {
+      state.tossing = false;
+
       dailyCoin.src = IMG.HEAD;
       dailyAgainBtn.classList.add("hidden");
-      dailyPickHead.disabled = false;
-      dailyPickTail.disabled = false;
 
       const last = window.localStorage.getItem(LS.dailyDate);
-      if (last === todayStr()) {
+      const doneToday = (last === todayStr());
+
+      dailyPickHead.disabled = doneToday;
+      dailyPickTail.disabled = doneToday;
+
+      if (doneToday) {
         dailyMsg.textContent = "Already completed today. Come back tomorrow!";
-        dailyPickHead.disabled = true;
-        dailyPickTail.disabled = true;
         dailyAgainBtn.classList.remove("hidden");
         return;
       }
+
       dailyMsg.textContent = "Pick HEAD or TAIL";
     }
 
@@ -302,8 +315,10 @@ export const CoinTossGame = {
       if (last === todayStr()) { enterDaily(); return; }
 
       state.tossing = true;
+
       dailyPickHead.disabled = true;
       dailyPickTail.disabled = true;
+
       dailyMsg.textContent = "Tossing...";
       ctx?.playSfx?.("beep");
 
@@ -314,8 +329,9 @@ export const CoinTossGame = {
       window.localStorage.setItem(LS.dailyDate, todayStr());
 
       if (userPick === r) {
-        dailyMsg.textContent = "Correct! +1 Title Point";
+        dailyMsg.textContent = "Correct! +1 Title Point / +5 Points";
         addTitlePoint(1);
+        ctx?.addPoints?.(5);        // ★共通ポイント +5
         ctx?.playSfx?.("go");
       } else {
         dailyMsg.textContent = `Miss... (Result: ${r})`;
@@ -330,11 +346,14 @@ export const CoinTossGame = {
     onTap(dailyPickTail, () => playDaily("TAIL"));
 
     onTap(dailyAgainBtn, () => {
+      state.tossing = false;
       refreshStartUI();
       show("start");
     });
 
+    // =========================
     // CHAIN
+    // =========================
     function setGlowByStreak(imgEl, streak) {
       imgEl.classList.remove("glow1", "glow2", "glow3");
       if (streak >= 10) imgEl.classList.add("glow3");
@@ -343,7 +362,9 @@ export const CoinTossGame = {
     }
 
     function enterChain() {
+      state.tossing = false;
       state.chainStreak = 0;
+
       chainCoin.src = IMG.HEAD;
       chainMsg.textContent = "Pick HEAD or TAIL";
       chainRestartBtn.classList.add("hidden");
@@ -362,6 +383,7 @@ export const CoinTossGame = {
 
       chainPickHead.disabled = true;
       chainPickTail.disabled = true;
+
       chainMsg.textContent = "Tossing...";
       ctx?.playSfx?.("beep");
 
@@ -375,12 +397,15 @@ export const CoinTossGame = {
         chainMsg.textContent = `Correct! Streak: ${state.chainStreak}`;
         setGlowByStreak(chainCoin, state.chainStreak);
 
+        // ✅ 続行できる時だけ有効化
         chainPickHead.disabled = false;
         chainPickTail.disabled = false;
+
         state.tossing = false;
         return;
       }
 
+      // ミス：ここからは再開ボタン以外は押せない（disabled + onTapガードで完全停止）
       chainMsg.textContent = `Miss... (Result: ${r}) Final Streak: ${state.chainStreak}`;
 
       if (state.chainStreak > state.chainBest) {
@@ -410,4 +435,5 @@ export const CoinTossGame = {
     }
   },
 };
+
 
