@@ -31,8 +31,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // help/result buttons
   const backFromHelpBtn = document.getElementById("backFromHelp");
-  const backBtn = document.getElementById("backBtn");
-  const retryBtn = document.getElementById("retryBtn");
+  const backBtn = document.getElementById("backBtn"); // モード選択
+  const retryBtn = document.getElementById("retryBtn"); // もう1回
 
   // basic guard
   if (!screens.start || !screens.game || !board || !countdownEl) {
@@ -104,15 +104,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const a = SFX.beep;
     const v = a.volume;
     a.volume = 0.0;
-    try {
-      a.currentTime = 0;
-    } catch {}
+    try { a.currentTime = 0; } catch {}
     a.play()
       .then(() => {
         a.pause();
-        try {
-          a.currentTime = 0;
-        } catch {}
+        try { a.currentTime = 0; } catch {}
         a.volume = v;
       })
       .catch(() => {
@@ -125,12 +121,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const base = SFX[key];
     if (!base) return;
 
-    // cloneで同時再生や連打に強くする
     const a = base.cloneNode();
     a.volume = base.volume;
-    try {
-      a.currentTime = 0;
-    } catch {}
+    try { a.currentTime = 0; } catch {}
     a.play().catch(() => {});
   }
 
@@ -191,7 +184,6 @@ document.addEventListener("DOMContentLoaded", () => {
       countdownRAF = requestAnimationFrame(tick);
     };
 
-    // 初回表示を即出す（tick内で鳴る）
     tick();
   }
 
@@ -206,6 +198,25 @@ document.addEventListener("DOMContentLoaded", () => {
     cointoss: CoinTossGame,
   };
 
+  // ✅ data-mode のタイポ吸収（ここが「未対応モード」対策の本丸）
+  function normalizeMode(raw) {
+    const m = String(raw || "").toLowerCase().trim();
+
+    // よくあるタイポ救済
+    if (m === "eazy") return "easy";
+    if (m === "heard") return "hard";
+
+    // 表記ブレ救済
+    if (m === "nt-d" || m === "ntd" || m === "tequila") return "destroy";
+    if (m === "coin" || m === "cointoss" || m === "coin-toss") return "cointoss";
+
+    // 正常系
+    if (m === "easy" || m === "normal" || m === "hard" || m === "destroy") return m;
+
+    // 空 or 不明 → easy
+    return "easy";
+  }
+
   let currentMode = "easy";
   let currentGame = null;
 
@@ -218,10 +229,29 @@ document.addEventListener("DOMContentLoaded", () => {
     return String(mode || "");
   }
 
+  // ✅ overlay 等の残骸を強制で消す（戻る/モード選択が効かない対策）
+  function hardCleanup() {
+    // NTDの負けoverlay
+    document.getElementById("tequilaOverlay")?.remove();
+
+    // もし支援overlay等を今後足すならここに追加
+    document.getElementById("donateOverlay")?.remove();
+
+    // board内にゲームが独自で作った画面が残っても消す
+    // （CoinTossが board を使わず body に作ってた場合の保険は↑にID追加してね）
+  }
+
   function goStart() {
     cancelCountdown();
-    if (currentGame?.destroy) currentGame.destroy(ctx);
+
+    // ゲーム側destroy
+    try {
+      if (currentGame?.destroy) currentGame.destroy(ctx);
+    } catch {}
+
+    hardCleanup();
     board.innerHTML = "";
+    if (missArea) missArea.textContent = "";
     setScreen("start");
   }
 
@@ -245,6 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ---- Points API ----
     addPoints(n) {
       const add = Number(n) || 0;
+      if (add <= 0) return totalPoints;
       totalPoints += add;
       writeInt(LS_POINTS, totalPoints);
       return totalPoints;
@@ -305,7 +336,10 @@ document.addEventListener("DOMContentLoaded", () => {
     cancelCountdown();
 
     // 前のゲームを掃除
-    if (currentGame?.destroy) currentGame.destroy(ctx);
+    try {
+      if (currentGame?.destroy) currentGame.destroy(ctx);
+    } catch {}
+    hardCleanup();
     board.innerHTML = "";
 
     currentGame = games[currentMode];
@@ -314,7 +348,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // コイントスはカウントダウン無しの方が快適（必要ならここ消してもOK）
+    // コイントスはカウントダウン無し
     if (currentMode === "cointoss") {
       setScreen("game");
       currentGame.start(ctx, { mode: currentMode });
@@ -327,95 +361,66 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
+  // Tap helper（iOSでpointerdownが拾えない時の保険にclickも付ける）
+  // =========================
+  function bindTap(el, handler) {
+    if (!el) return;
+    const h = (e) => {
+      e.preventDefault?.();
+      handler(e);
+    };
+    el.addEventListener("pointerdown", h, { passive: false });
+    el.addEventListener("click", h, { passive: false });
+  }
+
+  // =========================
   // Events
   // =========================
   document.querySelectorAll(".modeBtn").forEach((btn) => {
-    btn.addEventListener(
-      "pointerdown",
-      (e) => {
-        e.preventDefault();
-        ensureAudioUnlocked();
-        currentMode = btn.dataset.mode || "easy";
-        startSelectedMode();
-      },
-      { passive: false }
-    );
+    bindTap(btn, () => {
+      ensureAudioUnlocked();
+      currentMode = normalizeMode(btn.dataset.mode);
+      startSelectedMode();
+    });
   });
 
-  helpBtn?.addEventListener(
-    "pointerdown",
-    (e) => {
-      e.preventDefault();
-      ensureAudioUnlocked();
-      setScreen("help");
-    },
-    { passive: false }
-  );
+  bindTap(helpBtn, () => {
+    ensureAudioUnlocked();
+    setScreen("help");
+  });
 
-  backFromHelpBtn?.addEventListener(
-    "pointerdown",
-    (e) => {
-      e.preventDefault();
-      ensureAudioUnlocked();
-      setScreen("start");
-    },
-    { passive: false }
-  );
+  bindTap(backFromHelpBtn, () => {
+    ensureAudioUnlocked();
+    setScreen("start");
+  });
 
-  soundBtn?.addEventListener(
-    "pointerdown",
-    (e) => {
-      e.preventDefault();
-      ensureAudioUnlocked();
-      soundEnabled = !soundEnabled;
-      renderSoundIcon();
-      try {
-        localStorage.setItem("soundEnabled", soundEnabled ? "1" : "0");
-      } catch {}
-    },
-    { passive: false }
-  );
+  bindTap(soundBtn, () => {
+    ensureAudioUnlocked();
+    soundEnabled = !soundEnabled;
+    renderSoundIcon();
+    try { localStorage.setItem("soundEnabled", soundEnabled ? "1" : "0"); } catch {}
+  });
 
-  backBtn?.addEventListener(
-    "pointerdown",
-    (e) => {
-      e.preventDefault();
-      ensureAudioUnlocked();
-      goStart();
-    },
-    { passive: false }
-  );
+  // ✅ ここが「モード選択ボタン」
+  bindTap(backBtn, () => {
+    ensureAudioUnlocked();
+    goStart();
+  });
 
-  retryBtn?.addEventListener(
-    "pointerdown",
-    (e) => {
-      e.preventDefault();
-      ensureAudioUnlocked();
-      startSelectedMode();
-    },
-    { passive: false }
-  );
+  bindTap(retryBtn, () => {
+    ensureAudioUnlocked();
+    startSelectedMode();
+  });
 
-  shotBtn?.addEventListener(
-    "pointerdown",
-    (e) => {
-      e.preventDefault();
-      ensureAudioUnlocked();
-      playSfx("go");
-    },
-    { passive: false }
-  );
+  bindTap(shotBtn, () => {
+    ensureAudioUnlocked();
+    playSfx("go");
+  });
 
-  donateBtn?.addEventListener(
-    "pointerdown",
-    (e) => {
-      e.preventDefault();
-      ensureAudioUnlocked();
-      // ここは後でPayPay overlay等に差し替え
-      alert("支援ありがとうございます！（仮）");
-    },
-    { passive: false }
-  );
+  bindTap(donateBtn, () => {
+    ensureAudioUnlocked();
+    alert("支援ありがとうございます！（仮）");
+  });
 
   // =========================
   // init
