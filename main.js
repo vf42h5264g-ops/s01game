@@ -5,32 +5,7 @@ import { CoinTossGame } from "./games/cointoss.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   // =========================
-  // 共通ポイント（小数対応：10倍整数で保存）
-  // =========================
-  const LS_GLOBAL_POINTS_X10 = "qv_global_points_x10";
-
-  function getPoints() {
-    const v = Number(localStorage.getItem(LS_GLOBAL_POINTS_X10));
-    const x10 = Number.isFinite(v) ? v : 0;
-    return x10 / 10;
-  }
-
-  function addPoints(n) {
-    const curX10 = Math.round(getPoints() * 10);
-    const addX10 = Math.round(Number(n) * 10);
-    const nextX10 = curX10 + addX10;
-    localStorage.setItem(LS_GLOBAL_POINTS_X10, String(nextX10));
-    renderPoints();
-  }
-
-  function renderPoints() {
-    const el = document.getElementById("globalPoints");
-    if (!el) return;
-    el.textContent = `POINTS: ${getPoints().toFixed(1)}`;
-  }
-
-  // =========================
-  // Screen refs
+  // Screen DOM
   // =========================
   const screens = {
     start: document.getElementById("startScreen"),
@@ -42,56 +17,57 @@ document.addEventListener("DOMContentLoaded", () => {
   const board = document.getElementById("board");
   const countdownEl = document.getElementById("countdown");
   const missArea = document.getElementById("missArea");
+
   const resultText = document.getElementById("resultText");
   const resultMode = document.getElementById("resultMode");
+  const resultPoints = document.getElementById("resultPoints"); // あれば使う
   const timeText = document.getElementById("timeText");
 
+  // footer buttons
+  const shotBtn = document.getElementById("shotBtn");
   const helpBtn = document.getElementById("helpBtn");
+  const donateBtn = document.getElementById("donateBtn");
+  const soundBtn = document.getElementById("soundBtn");
+
+  // help/result buttons
   const backFromHelpBtn = document.getElementById("backFromHelp");
   const backBtn = document.getElementById("backBtn");
   const retryBtn = document.getElementById("retryBtn");
-  const soundBtn = document.getElementById("soundBtn");
 
-  const donateBtn = document.getElementById("donateBtn");
-  const shotBtn = document.getElementById("shotBtn");
-
-  // ===== basic guards =====
+  // basic guard
   if (!screens.start || !screens.game || !board || !countdownEl) {
     alert("必要なHTML idが見つかりません（startScreen/gameScreen/board/countdown）");
     return;
   }
 
   function setScreen(name) {
-    Object.values(screens).forEach(s => s && s.classList.add("hidden"));
+    Object.values(screens).forEach((s) => s && s.classList.add("hidden"));
     screens[name]?.classList.remove("hidden");
   }
 
   // =========================
-  // タップ共通（pointerdown + click）
-  // ※ sound/donate は click 専用にする（長押し問題回避）
+  // Points (localStorage)
   // =========================
-  function onTap(el, handler) {
-    if (!el) return;
+  const LS_POINTS = "qv_points";
 
-    // click（確実）
-    el.addEventListener("click", (e) => {
-      if (el.disabled) return;
-      if (el.classList?.contains("hidden")) return;
-      try { handler(e); } catch (err) { console.error(err); }
-    });
-
-    // pointerdown（レスポンス改善）
-    el.addEventListener("pointerdown", (e) => {
-      if (el.disabled) return;
-      if (el.classList?.contains("hidden")) return;
-
-      e.preventDefault();
-      try { handler(e); } catch (err) { console.error(err); }
-    }, { passive: false });
+  function readInt(key, fallback = 0) {
+    try {
+      const n = Number(localStorage.getItem(key));
+      return Number.isFinite(n) ? n : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  function writeInt(key, value) {
+    try {
+      localStorage.setItem(key, String(value));
+    } catch {}
   }
 
+  let totalPoints = readInt(LS_POINTS, 0);
+
   // =========================
-  // Sound setting
+  // Sound Enabled toggle
   // =========================
   let soundEnabled = true;
   try {
@@ -105,83 +81,71 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   renderSoundIcon();
 
-  // ===== HTMLAudio (iPhone安定寄り：clone再生) =====
-  const SFX_BASE = {
-    beep: new Audio("./sound/beep.wav"),
-    beep2: new Audio("./sound/beep2.wav"),
-    go: new Audio("./sound/go.wav"),
+  // =========================
+  // SFX (HTMLAudio stable)
+  // =========================
+  const SFX = {
+    beep: new Audio("sound/beep.wav"),
+    beep2: new Audio("sound/beep2.wav"),
+    go: new Audio("sound/go.wav"),
   };
-  Object.values(SFX_BASE).forEach(a => { a.preload = "auto"; a.volume = 1.0; });
+  Object.values(SFX).forEach((a) => {
+    a.preload = "auto";
+    a.volume = 1.0;
+  });
 
   let audioUnlocked = false;
-  let audioPrimed = false;
 
-  // iOS解錠（極小音で短く）+ prime
-  function ensureAudio() {
+  function ensureAudioUnlocked() {
     if (audioUnlocked) return;
-
     audioUnlocked = true;
 
-    const a = SFX_BASE.beep;
+    // iOS解錠：beepを無音で一瞬再生して止める（goは鳴らさない）
+    const a = SFX.beep;
     const v = a.volume;
-
-    // 完全0だと効かない端末があるので極小
-    a.volume = 0.01;
-    try { a.currentTime = 0; } catch {}
-
-    a.play().then(() => {
-      a.pause();
-      try { a.currentTime = 0; } catch {}
-      a.volume = v;
-      primeAudioOnce();
-    }).catch(() => {
-      a.volume = v;
-      // 失敗してもprimeは試す
-      primeAudioOnce();
-    });
-  }
-
-  function primeAudioOnce() {
-    if (audioPrimed) return;
-    audioPrimed = true;
-
-    ["beep", "beep2", "go"].forEach(key => {
-      const base = SFX_BASE[key];
-      if (!base) return;
-      const tmp = base.cloneNode();
-      tmp.volume = 0.0;
-      try { tmp.currentTime = 0; } catch {}
-      tmp.play().then(() => {
-        tmp.pause();
-        try { tmp.currentTime = 0; } catch {}
-      }).catch(() => {});
-    });
+    a.volume = 0.0;
+    try {
+      a.currentTime = 0;
+    } catch {}
+    a.play()
+      .then(() => {
+        a.pause();
+        try {
+          a.currentTime = 0;
+        } catch {}
+        a.volume = v;
+      })
+      .catch(() => {
+        a.volume = v;
+      });
   }
 
   function playSfx(key) {
     if (!soundEnabled) return;
-    const base = SFX_BASE[key];
+    const base = SFX[key];
     if (!base) return;
-    if (!audioUnlocked) return;
 
+    // cloneで同時再生や連打に強くする
     const a = base.cloneNode();
     a.volume = base.volume;
-    try { a.currentTime = 0; } catch {}
+    try {
+      a.currentTime = 0;
+    } catch {}
     a.play().catch(() => {});
   }
 
   // =========================
-  // Countdown
+  // Countdown (drift correction)
   // =========================
   let countdownRunning = false;
-  let raf = 0;
-  let finishTimer = 0;
+  let countdownRAF = 0;
+  let countdownFinishTimer = 0;
 
   function cancelCountdown() {
-    if (raf) cancelAnimationFrame(raf);
-    raf = 0;
-    if (finishTimer) clearTimeout(finishTimer);
-    finishTimer = 0;
+    if (countdownRAF) cancelAnimationFrame(countdownRAF);
+    countdownRAF = 0;
+    if (countdownFinishTimer) clearTimeout(countdownFinishTimer);
+    countdownFinishTimer = 0;
     countdownRunning = false;
   }
 
@@ -192,12 +156,12 @@ document.addEventListener("DOMContentLoaded", () => {
     setScreen("game");
     board.innerHTML = "";
     if (missArea) missArea.textContent = "";
+
     countdownEl.classList.remove("hidden");
 
-    const t0 = performance.now();
     const seq = [3, 2, 1, 0];
-    let lastShown = null;
-    let firstBeepDone = false;
+    const t0 = performance.now();
+    let last = null;
 
     const tick = () => {
       if (!countdownRunning) return;
@@ -206,25 +170,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const idx = Math.min(3, Math.floor(elapsed));
       const show = seq[idx];
 
-      if (show !== lastShown) {
+      if (show !== last) {
         countdownEl.textContent = String(show);
-        lastShown = show;
-
-        if (!firstBeepDone) {
-          firstBeepDone = true;
-          requestAnimationFrame(() => {
-            if (!countdownRunning) return;
-            if (show === 0) playSfx("beep2");
-            else playSfx("beep");
-          });
-        } else {
-          if (show === 0) playSfx("beep2");
-          else playSfx("beep");
-        }
+        last = show;
+        if (show === 0) playSfx("beep2");
+        else playSfx("beep");
       }
 
+      // 0を少し見せてから開始
       if (show === 0 && elapsed >= 3.05) {
-        finishTimer = setTimeout(() => {
+        countdownFinishTimer = setTimeout(() => {
           if (!countdownRunning) return;
           countdownEl.classList.add("hidden");
           countdownRunning = false;
@@ -233,9 +188,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      raf = requestAnimationFrame(tick);
+      countdownRAF = requestAnimationFrame(tick);
     };
 
+    // 初回表示を即出す（tick内で鳴る）
     tick();
   }
 
@@ -257,189 +213,216 @@ document.addEventListener("DOMContentLoaded", () => {
     if (mode === "easy") return "EASY";
     if (mode === "normal") return "NORMAL";
     if (mode === "hard") return "HARD";
-    if (mode === "destroy") return "TEQUILA";
-    if (mode === "cointoss") return "COIN";
-    return mode;
+    if (mode === "destroy") return "NT-D";
+    if (mode === "cointoss") return "COIN TOSS";
+    return String(mode || "");
   }
 
-  function goToStart() {
+  function goStart() {
     cancelCountdown();
-    try {
-      if (currentGame?.destroy) currentGame.destroy(ctx);
-    } catch (e) {
-      console.error(e);
-    }
+    if (currentGame?.destroy) currentGame.destroy(ctx);
     board.innerHTML = "";
     setScreen("start");
-    setMemoryMenu(false);
   }
 
-  // ctx：ゲームに渡す共通API
+  // =========================
+  // ctx: games API
+  // =========================
   const ctx = {
     board,
     missArea,
+
     setScreen,
+    goStart,
+
+    ensureAudioUnlocked,
     playSfx,
-    ensureAudio,
-    goToStart,
 
-    // ★共通ポイントAPI
-    addPoints,
-    getPoints,
-
-    showResult({ title, timeSec, mode }) {
-      if (resultMode) resultMode.textContent = modeLabel(mode);
-      if (resultText) resultText.textContent = title || "";
-      if (timeText) timeText.textContent = timeSec ? `TIME : ${timeSec}s` : "";
-      setScreen("result");
+    getMode() {
+      return currentMode;
     },
 
-    getMode() { return currentMode; },
+    // ---- Points API ----
+    addPoints(n) {
+      const add = Number(n) || 0;
+      totalPoints += add;
+      writeInt(LS_POINTS, totalPoints);
+      return totalPoints;
+    },
+    getPoints() {
+      return totalPoints;
+    },
+    showPointGain(n) {
+      const gain = Number(n) || 0;
+      if (!gain) return;
+
+      const el = document.createElement("div");
+      el.textContent = `+${gain} P`;
+      el.style.position = "fixed";
+      el.style.left = "50%";
+      el.style.top = "18%";
+      el.style.transform = "translateX(-50%)";
+      el.style.padding = "10px 14px";
+      el.style.borderRadius = "14px";
+      el.style.background = "rgba(0,0,0,0.72)";
+      el.style.border = "1px solid rgba(255,255,255,0.18)";
+      el.style.color = "#ffd36a";
+      el.style.fontWeight = "900";
+      el.style.letterSpacing = "0.06em";
+      el.style.zIndex = "99999";
+      el.style.pointerEvents = "none";
+      document.body.appendChild(el);
+
+      setTimeout(() => el.remove(), 1100);
+    },
+
+    // ---- Result UI ----
+    showResult({ title, timeSec, mode, pointsEarned = 0 }) {
+      const m = mode || currentMode;
+
+      if (resultMode) resultMode.textContent = modeLabel(m);
+      if (resultText) resultText.textContent = title || "";
+      if (timeText) timeText.textContent = timeSec ? `TIME : ${timeSec}s` : "";
+
+      const p = Number(pointsEarned) || 0;
+
+      if (resultPoints) {
+        resultPoints.textContent = p
+          ? `獲得ポイント：+${p}P（合計 ${totalPoints}P）`
+          : `合計 ${totalPoints}P`;
+      } else if (timeText) {
+        const base = timeText.textContent || "";
+        timeText.textContent = p
+          ? `${base}   +${p}P（TOTAL ${totalPoints}P）`
+          : `${base}   TOTAL ${totalPoints}P`;
+      }
+
+      setScreen("result");
+    },
   };
 
   function startSelectedMode() {
     cancelCountdown();
 
-    // 前ゲーム掃除
-    try {
-      if (currentGame?.destroy) currentGame.destroy(ctx);
-    } catch (e) {
-      console.error(e);
-    }
+    // 前のゲームを掃除
+    if (currentGame?.destroy) currentGame.destroy(ctx);
     board.innerHTML = "";
 
     currentGame = games[currentMode];
     if (!currentGame) {
-      alert("ゲームが見つかりません: " + currentMode);
-      goToStart();
+      alert("未対応モード: " + currentMode);
       return;
     }
 
-    // コイントスは即開始
+    // コイントスはカウントダウン無しの方が快適（必要ならここ消してもOK）
     if (currentMode === "cointoss") {
       setScreen("game");
-      try {
-        currentGame.start(ctx, { mode: currentMode });
-      } catch (e) {
-        console.error(e);
-        alert("ゲーム開始中にエラーが発生しました（Consoleを確認）");
-      }
+      currentGame.start(ctx, { mode: currentMode });
       return;
     }
 
     startCountdown(() => {
-      try {
-        currentGame.start(ctx, { mode: currentMode });
-      } catch (e) {
-        console.error(e);
-        alert("ゲーム開始中にエラーが発生しました（Consoleを確認）");
-      }
+      currentGame.start(ctx, { mode: currentMode });
     });
   }
 
   // =========================
-  // Events: mode buttons
+  // Events
   // =========================
-  const memorySubModes = document.getElementById("memorySubModes");
-let memoryMenuOpen = false;
-
-function setMemoryMenu(open) {
-  memoryMenuOpen = open;
-  if (memorySubModes) {
-    memorySubModes.classList.toggle("hidden", !open);
-  }
-  const memBtn = document.querySelector('.modeBtn[data-mode="memory"]');
-  if (memBtn) memBtn.classList.toggle("isOpen", open);
-}
-
-function toggleMemoryMenu() {
-  setMemoryMenu(!memoryMenuOpen);
-}
-
-document.querySelectorAll(".modeBtn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    ensureAudio();
-
-    const mode = btn.dataset.mode;
-
-    // MEMORY-GAME はサブメニュー開閉だけ（開始しない）
-    if (mode === "memory") {
-      toggleMemoryMenu();
-      return;
-    }
-
-    // EASY/NORMAL/HARD を押したら閉じて開始
-    if (mode === "easy" || mode === "normal" || mode === "hard") {
-      setMemoryMenu(false);
-    } else {
-      // 他ゲームを押した時も閉じる
-      setMemoryMenu(false);
-    }
-
-    currentMode = mode || "easy";
-    startSelectedMode();
-  });
-});
-
-
-  // Help
-  onTap(helpBtn, () => { ensureAudio(); setScreen("help"); });
-  onTap(backFromHelpBtn, () => { ensureAudio(); setScreen("start"); });
-
-  // Back / Retry
-  onTap(backBtn, () => { ensureAudio(); goToStart(); });
-  onTap(retryBtn, () => { ensureAudio(); startSelectedMode(); });
-
-  // Shot
-  onTap(shotBtn, () => { ensureAudio(); playSfx("go"); });
-
-  // =========================
-  // 🔊 Sound toggle（長押し回避のため click 専用）
-  // =========================
-  soundBtn?.addEventListener("click", () => {
-    ensureAudio();
-    soundEnabled = !soundEnabled;
-    renderSoundIcon();
-    try { localStorage.setItem("soundEnabled", soundEnabled ? "1" : "0"); } catch {}
+  document.querySelectorAll(".modeBtn").forEach((btn) => {
+    btn.addEventListener(
+      "pointerdown",
+      (e) => {
+        e.preventDefault();
+        ensureAudioUnlocked();
+        currentMode = btn.dataset.mode || "easy";
+        startSelectedMode();
+      },
+      { passive: false }
+    );
   });
 
-  // =========================
-  // 投げ銭モーダル
-  // =====================
-  function showThanksToast() {
-    const old = document.getElementById("thanksToast");
-    if (old) old.remove();
+  helpBtn?.addEventListener(
+    "pointerdown",
+    (e) => {
+      e.preventDefault();
+      ensureAudioUnlocked();
+      setScreen("help");
+    },
+    { passive: false }
+  );
 
-    const toast = document.createElement("div");
-    toast.id = "thanksToast";
-    toast.textContent = "ご支援ありがとうございます！制作の励みになります 🙏";
-    toast.style.position = "fixed";
-    toast.style.left = "50%";
-    toast.style.transform = "translateX(-50%)";
-    toast.style.bottom = "calc(env(safe-area-inset-bottom, 0px) + 110px)";
-    toast.style.zIndex = "99999";
-    toast.style.padding = "10px 14px";
-    toast.style.borderRadius = "999px";
-    toast.style.background = "rgba(0,0,0,0.72)";
-    toast.style.border = "1px solid rgba(255,255,255,0.16)";
-    toast.style.color = "#fff";
-    toast.style.fontWeight = "800";
-    toast.style.letterSpacing = "0.04em";
-    toast.style.fontSize = "14px";
-    toast.style.boxShadow = "0 18px 44px rgba(0,0,0,0.45)";
-    toast.style.pointerEvents = "none";
+  backFromHelpBtn?.addEventListener(
+    "pointerdown",
+    (e) => {
+      e.preventDefault();
+      ensureAudioUnlocked();
+      setScreen("start");
+    },
+    { passive: false }
+  );
 
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2200);
-  }
+  soundBtn?.addEventListener(
+    "pointerdown",
+    (e) => {
+      e.preventDefault();
+      ensureAudioUnlocked();
+      soundEnabled = !soundEnabled;
+      renderSoundIcon();
+      try {
+        localStorage.setItem("soundEnabled", soundEnabled ? "1" : "0");
+      } catch {}
+    },
+    { passive: false }
+  );
+
+  backBtn?.addEventListener(
+    "pointerdown",
+    (e) => {
+      e.preventDefault();
+      ensureAudioUnlocked();
+      goStart();
+    },
+    { passive: false }
+  );
+
+  retryBtn?.addEventListener(
+    "pointerdown",
+    (e) => {
+      e.preventDefault();
+      ensureAudioUnlocked();
+      startSelectedMode();
+    },
+    { passive: false }
+  );
+
+  shotBtn?.addEventListener(
+    "pointerdown",
+    (e) => {
+      e.preventDefault();
+      ensureAudioUnlocked();
+      playSfx("go");
+    },
+    { passive: false }
+  );
+
+  donateBtn?.addEventListener(
+    "pointerdown",
+    (e) => {
+      e.preventDefault();
+      ensureAudioUnlocked();
+      // ここは後でPayPay overlay等に差し替え
+      alert("支援ありがとうございます！（仮）");
+    },
+    { passive: false }
+  );
 
   // =========================
   // init
   // =========================
-  setMemoryMenu(false);
-  renderPoints();
   setScreen("start");
 });
+
 
 
 
