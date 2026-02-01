@@ -16,6 +16,39 @@ export const MemoryGame = {
 
     const BACK_SRC = "img/vback.jpg";
 
+    // ===== ポイント（main.jsが古い時の保険：ここでも加算できる）=====
+    const POINTS_KEY = "qv_points";
+
+    const readInt = (key, fallback = 0) => {
+      try {
+        const n = Number(localStorage.getItem(key));
+        return Number.isFinite(n) ? n : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+
+    const writeInt = (key, value) => {
+      try {
+        localStorage.setItem(key, String(value));
+      } catch {}
+    };
+
+    function addPointsSafe(n) {
+      const add = Number(n) || 0;
+      if (add <= 0) return;
+
+      // ✅ main.js が新しければ ctx.addPoints を使う
+      if (typeof ctx.addPoints === "function") {
+        ctx.addPoints(add);
+        return;
+      }
+
+      // ✅ 古い main.js でも確実に増える保険
+      const cur = readInt(POINTS_KEY, 0);
+      writeInt(POINTS_KEY, cur + add);
+    }
+
     // ===== モード別設定 =====
     // 画像種類数：easy 3種(6枚) / normal&hard 6種(12枚)
     const kindCount =
@@ -73,11 +106,13 @@ export const MemoryGame = {
 
       const timeSec = ((Date.now() - startTime) / 1000).toFixed(1);
 
-      // ✅ ポイント加算
+      // ✅ ポイント加算（確実に増える）
       const earned = clearPoints;
       if (earned > 0) {
-        ctx.addPoints?.(earned);
-        ctx.showPointGain?.(earned); // 画面内 +◯P（任意）
+        addPointsSafe(earned);
+
+        // 獲得演出（main.js側にshowPointGainがあれば出す）
+        ctx.showPointGain?.(earned);
       }
 
       ctx.showResult?.({
@@ -147,9 +182,7 @@ export const MemoryGame = {
 
           miss++;
           renderStatus();
-          if (!checkBadEnd()) {
-            // 続行
-          }
+          checkBadEnd();
         }, 800);
       }, { passive: false });
     });
