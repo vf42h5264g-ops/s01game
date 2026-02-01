@@ -1,9 +1,9 @@
 // games/ntd.js
 // =====================================
-// NT-D Game
+// TEQUILA Game (NT-D)
 // - v03 を引いたら即負け
 // - safe: v01,v02,v04,v05,v06,v07 から 11枚（重複あり） + v03を1枚 = 12枚
-// - safe 11枚めくり切ったら勝ち
+// - safe 11枚めくり切ったら勝ち（+10 points）
 // - v03負け時：ランダム台詞のみ表示（固定文なし）
 // =====================================
 
@@ -36,8 +36,11 @@ export const NTDGame = {
     this.destroy(ctx);
     this._active = true;
 
-    const mode = opt.mode || ctx.getMode?.() || "destroy"; // 念のため
+    const mode = opt.mode || ctx.getMode?.() || "destroy";
     const BACK_SRC = "img/vback.jpg";
+
+    // クリア/終了の二重発火防止
+    let finished = false;
 
     // 盤面レイアウトは 12枚
     ctx.board.classList.remove("layout-easy", "layout-12");
@@ -55,11 +58,7 @@ export const NTDGame = {
 
     // カード生成
     const pool = ["v01", "v02", "v04", "v05", "v06", "v07"];
-
-    const safe11 = Array.from({ length: 11 }, () => {
-      return pool[Math.floor(Math.random() * pool.length)];
-    });
-
+    const safe11 = Array.from({ length: 11 }, () => pool[Math.floor(Math.random() * pool.length)]);
     const cards = [...safe11, "v03"].sort(() => Math.random() - 0.5);
 
     let lock = false;
@@ -72,6 +71,22 @@ export const NTDGame = {
       ctx.missArea.textContent = `SAFE : ${safeOpened}/11   残り ${remain}`;
     };
     renderStatus();
+
+    // pointerdown + click 併用（overlayボタン等の安定用）
+    const bindTap = (el, fn) => {
+      if (!el) return;
+
+      el.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        if (!this._active) return;
+        fn(e);
+      }, { passive: false });
+
+      el.addEventListener("click", (e) => {
+        if (!this._active) return;
+        fn(e);
+      });
+    };
 
     const showLoseOverlay = (lineText) => {
       if (!this._active) return;
@@ -101,7 +116,6 @@ export const NTDGame = {
       img.style.height = "70vh";
       img.style.objectFit = "contain";
 
-      // ✅ ランダム台詞のみ
       const line = document.createElement("div");
       line.textContent = lineText;
       line.style.color = "#ff3bd4";
@@ -110,7 +124,6 @@ export const NTDGame = {
       line.style.letterSpacing = "0.04em";
       line.style.textShadow = "0 0 14px rgba(255, 60, 212, 0.55)";
 
-      // ボタン行
       const btnRow = document.createElement("div");
       btnRow.style.position = "absolute";
       btnRow.style.left = "0";
@@ -129,18 +142,12 @@ export const NTDGame = {
       retry.style.border = "none";
       retry.style.cursor = "pointer";
 
-      retry.addEventListener(
-        "pointerdown",
-        (e) => {
-          e.preventDefault();
-          if (!this._active) return;
-          overlay.remove();
-          this._overlayEl = null;
-          // NT-Dを再スタート
-          this.start(ctx, { mode: "destroy" });
-        },
-        { passive: false }
-      );
+      bindTap(retry, () => {
+        if (!this._active) return;
+        overlay.remove();
+        this._overlayEl = null;
+        this.start(ctx, { mode: "destroy" });
+      });
 
       const back = document.createElement("button");
       back.textContent = "モード選択";
@@ -150,17 +157,11 @@ export const NTDGame = {
       back.style.border = "none";
       back.style.cursor = "pointer";
 
-      back.addEventListener(
-        "pointerdown",
-        (e) => {
-          e.preventDefault();
-          overlay.remove();
-          this._overlayEl = null;
-          // main.js 側で start画面に戻す関数を用意してある想定
-          ctx.goToStart?.();
-        },
-        { passive: false }
-      );
+      bindTap(back, () => {
+        overlay.remove();
+        this._overlayEl = null;
+        ctx.goToStart?.();
+      });
 
       btnRow.appendChild(retry);
       btnRow.appendChild(back);
@@ -188,56 +189,54 @@ export const NTDGame = {
       card.appendChild(img);
       ctx.board.appendChild(card);
 
-      card.addEventListener(
-        "pointerdown",
-        (e) => {
-          e.preventDefault();
-          if (!this._active) return;
-          if (lock) return;
-          if (img.dataset.open === "1") return;
+      card.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        if (!this._active || finished) return;
+        if (lock) return;
+        if (img.dataset.open === "1") return;
 
-          img.src = `img/${name}.jpg`;
-          img.dataset.open = "1";
+        img.src = `img/${name}.jpg`;
+        img.dataset.open = "1";
 
-          // v03 = 即負け
-          if (name === "v03") {
-            lock = true;
+        // v03 = 即負け
+        if (name === "v03") {
+          lock = true;
+          ctx.playSfx?.("go");
 
-            // めくった瞬間に音
-            ctx.playSfx?.("go");
+          const t = setTimeout(() => {
+            if (!this._active || finished) return;
+            showLoseOverlay(pickLine());
+          }, 60);
+          this._timers.push(t);
+          return;
+        }
 
-            // UIは少しだけ遅らせる（視認性のため）
-            const t = setTimeout(() => {
-              if (!this._active) return;
-              showLoseOverlay(pickLine());
-            }, 60);
-            this._timers.push(t);
-            return;
-          }
+        // safe
+        safeOpened++;
+        renderStatus();
 
-          // safe
-          safeOpened++;
-          renderStatus();
+        if (safeOpened >= 11) {
+          lock = true;
 
-          if (safeOpened >= 11) {
-            lock = true;
+          const t = setTimeout(() => {
+            if (!this._active || finished) return;
 
-            const t = setTimeout(() => {
-              if (!this._active) return;
-              const timeSec = ((Date.now() - startTime) / 1000).toFixed(1);
+            finished = true; // ★二重発火防止
+            const timeSec = ((Date.now() - startTime) / 1000).toFixed(1);
 
-              // 勝利表示（Result画面）
-              ctx.showResult?.({
-                title: "SURVIVED!!",
-                timeSec,
-                mode,
-              });
-            }, 200);
-            this._timers.push(t);
-          }
-        },
-        { passive: false }
-      );
+            // ★クリア報酬：共通ポイント +10
+            ctx?.addPoints?.(10);
+
+            ctx.showResult?.({
+              title: "SURVIVED!!",
+              timeSec,
+              mode,
+            });
+          }, 200);
+
+          this._timers.push(t);
+        }
+      }, { passive: false });
     });
   },
 };
