@@ -1,200 +1,161 @@
 // games/memory.js
-// =====================================
-// MemoryGame (EASY / NORMAL / HARD)
-// - EASY  : 3種類×2=6枚 (v02,v03,v04)
-// - NORMAL: 6種類×2=12枚 (v02..v07)
-// - HARD  : NORMALと同じ + ミス5回でBAD END
-// =====================================
-
 export const MemoryGame = {
   id: "memory",
 
-  // 内部状態（destroyで止めるため）
-  _active: false,
-  _timers: [],
-
   destroy(ctx) {
-    this._active = false;
-    this._timers.forEach((t) => clearTimeout(t));
-    this._timers = [];
-
-    if (ctx?.board) {
-      ctx.board.innerHTML = "";
-      ctx.board.classList.remove("layout-easy", "layout-12");
-    }
+    // boardを空にしてイベントごと捨てる
+    if (ctx?.board) ctx.board.innerHTML = "";
     if (ctx?.missArea) ctx.missArea.textContent = "";
   },
 
-  start(ctx, opt = {}) {
-    this.destroy(ctx);
-    this._active = true;
+  start(ctx, opts = {}) {
+    const mode = opts.mode || ctx.getMode?.() || "easy";
 
-    const mode = opt.mode || ctx.getMode?.() || "easy";
+    const board = ctx.board;
+    const missArea = ctx.missArea;
+
     const BACK_SRC = "img/vback.jpg";
 
-    // クリア/終了の二重発火防止
-    let finished = false;
+    // ===== モード別設定 =====
+    // 画像種類数：easy 3種(6枚) / normal&hard 6種(12枚)
+    const kindCount =
+      mode === "easy" ? 3 :
+      mode === "normal" ? 6 :
+      mode === "hard" ? 6 : 6;
 
-    // --- 盤面レイアウト
-    ctx.board.classList.remove("layout-easy", "layout-12");
-    if (mode === "easy") ctx.board.classList.add("layout-easy");
-    else ctx.board.classList.add("layout-12");
+    // クリア時ポイント（好きに調整OK）
+    const clearPoints =
+      mode === "easy" ? 1 :
+      mode === "normal" ? 2 :
+      mode === "hard" ? 3 : 0;
 
-    // --- ミス表示
-    let miss = 0;
-    const HARD_MAX_MISS = 5;
+    // ===== 盤面レイアウト（CSSクラス） =====
+    board.classList.remove("layout-easy", "layout-12");
+    if (mode === "easy") board.classList.add("layout-easy");
+    else board.classList.add("layout-12");
 
-    const renderStatus = () => {
-      if (!ctx.missArea) return;
-
-      if (mode === "hard") {
-        const left = Math.max(0, HARD_MAX_MISS - miss);
-        ctx.missArea.textContent =
-          "MISS : " + "✖".repeat(miss) + "・".repeat(left);
-      } else {
-        ctx.missArea.textContent = "";
-      }
-    };
-
-    renderStatus();
-
-    // --- カード構成
-    const totalKinds = (mode === "easy") ? 3 : 6;
-    const names = [];
-    for (let i = 2; i < 2 + totalKinds; i++) {
-      names.push("v" + i.toString().padStart(2, "0"));
-    }
-
-    // 2枚ずつ
-    const cards = [...names, ...names].sort(() => Math.random() - 0.5);
-
-    // --- 状態
-    let firstImg = null;
+    // ===== 状態 =====
+    let first = null;
     let lock = false;
+    let miss = 0;
     const startTime = Date.now();
-    let openedCount = 0;
 
-    // --- クリア時のポイント
-    function awardPointsOnce() {
-      if (finished) return; // 念のため
-      const pts = (mode === "easy") ? 0.5 : (mode === "normal") ? 1 : 2;
-      ctx?.addPoints?.(pts);
+    function renderStatus() {
+      if (!missArea) return;
+      if (mode === "hard") {
+        const max = 5;
+        missArea.textContent =
+          "MISS : " + "✖".repeat(miss) + "・".repeat(Math.max(0, max - miss));
+      } else {
+        missArea.textContent = "";
+      }
     }
 
-    function finishWithResult({ title, timeSec }) {
-      if (finished) return;
-      finished = true;
-      this._active = false; // 追加タップ抑止（保険）
+    function checkBadEnd() {
+      if (mode === "hard" && miss >= 5) {
+        // BAD END はポイントなし
+        ctx.showResult?.({
+          title: "BAD END…",
+          timeSec: null,
+          mode,
+          pointsEarned: 0,
+        });
+        return true;
+      }
+      return false;
+    }
 
-      if (title === "PERFECT!!") {
-        awardPointsOnce();
+    function checkClear() {
+      const open = [...board.querySelectorAll(".card img")]
+        .every(img => img.dataset.open === "1");
+
+      if (!open) return;
+
+      const timeSec = ((Date.now() - startTime) / 1000).toFixed(1);
+
+      // ✅ ポイント加算
+      const earned = clearPoints;
+      if (earned > 0) {
+        ctx.addPoints?.(earned);
+        ctx.showPointGain?.(earned); // 画面内 +◯P（任意）
       }
 
       ctx.showResult?.({
-        title,
+        title: "PERFECT!!",
         timeSec,
         mode,
+        pointsEarned: earned,
       });
     }
 
-    // --- タップ共通（pointerdown + click）
-    function bindTap(el, fn) {
-      el.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        if (!MemoryGame._active) return;
-        fn(e);
-      }, { passive: false });
-
-      // 保険
-      el.addEventListener("click", (e) => {
-        if (!MemoryGame._active) return;
-        fn(e);
-      });
+    // ===== デッキ生成 =====
+    // v02〜 を使う（kindCount=3なら v02,v03,v04）
+    const names = [];
+    for (let i = 2; i < 2 + kindCount; i++) {
+      names.push("v" + String(i).padStart(2, "0"));
     }
+    const cards = [...names, ...names].sort(() => Math.random() - 0.5);
 
-    // --- 1枚生成
-    const makeCard = (name) => {
+    // ===== 描画 =====
+    board.innerHTML = "";
+    renderStatus();
+
+    cards.forEach(name => {
       const card = document.createElement("div");
       card.className = "card";
 
       const img = document.createElement("img");
       img.src = BACK_SRC;
-      img.alt = name;
       img.dataset.open = "0";
       img.dataset.name = name;
 
       card.appendChild(img);
+      board.appendChild(card);
 
-      bindTap(card, () => {
-        if (!this._active || finished) return;
+      card.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
         if (lock) return;
         if (img.dataset.open === "1") return;
 
-        // open
+        // 開く
         img.src = `img/${name}.jpg`;
         img.dataset.open = "1";
-        openedCount++;
 
-        if (!firstImg) {
-          firstImg = img;
+        if (!first) {
+          first = img;
           return;
         }
 
-        // 2枚目
         lock = true;
 
-        const isMatch = firstImg.dataset.name === img.dataset.name;
-
-        if (isMatch) {
-          // 当たり
-          firstImg = null;
+        // 一致
+        if (first.dataset.name === img.dataset.name) {
+          first = null;
           lock = false;
-
-          // クリア判定
-          if (openedCount >= cards.length) {
-            const timeSec = ((Date.now() - startTime) / 1000).toFixed(1);
-            finishWithResult.call(this, { title: "PERFECT!!", timeSec });
-          }
+          checkClear();
           return;
         }
 
-        // 外れ：少し見せて戻す
-        const t = setTimeout(() => {
-          if (!this._active || finished) return;
-
+        // 不一致
+        setTimeout(() => {
           img.src = BACK_SRC;
-          firstImg.src = BACK_SRC;
-
+          first.src = BACK_SRC;
           img.dataset.open = "0";
-          firstImg.dataset.open = "0";
-
-          openedCount -= 2;
-
-          firstImg = null;
+          first.dataset.open = "0";
+          first = null;
           lock = false;
 
           miss++;
           renderStatus();
-
-          // HARD：BAD END
-          if (mode === "hard" && miss >= HARD_MAX_MISS) {
-            finishWithResult.call(this, { title: "BAD END…", timeSec: null });
+          if (!checkBadEnd()) {
+            // 続行
           }
         }, 800);
-
-        this._timers.push(t);
-      });
-
-      return card;
-    };
-
-    // --- 盤面描画
-    ctx.board.innerHTML = "";
-    cards.forEach((name) => {
-      ctx.board.appendChild(makeCard(name));
+      }, { passive: false });
     });
   },
 };
+
 
 
 
