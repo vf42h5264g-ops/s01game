@@ -339,13 +339,47 @@ document.addEventListener("DOMContentLoaded", () => {
   // =========================
   // Events: mode buttons
   // =========================
-  document.querySelectorAll(".modeBtn").forEach(btn => {
-    onTap(btn, () => {
-      ensureAudio();
-      currentMode = btn.dataset.mode || "easy";
-      startSelectedMode();
-    });
+  const memorySubModes = document.getElementById("memorySubModes");
+let memoryMenuOpen = false;
+
+function setMemoryMenu(open) {
+  memoryMenuOpen = open;
+  if (memorySubModes) {
+    memorySubModes.classList.toggle("hidden", !open);
+  }
+  const memBtn = document.querySelector('.modeBtn[data-mode="memory"]');
+  if (memBtn) memBtn.classList.toggle("isOpen", open);
+}
+
+function toggleMemoryMenu() {
+  setMemoryMenu(!memoryMenuOpen);
+}
+
+document.querySelectorAll(".modeBtn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    ensureAudio();
+
+    const mode = btn.dataset.mode;
+
+    // MEMORY-GAME はサブメニュー開閉だけ（開始しない）
+    if (mode === "memory") {
+      toggleMemoryMenu();
+      return;
+    }
+
+    // EASY/NORMAL/HARD を押したら閉じて開始
+    if (mode === "easy" || mode === "normal" || mode === "hard") {
+      setMemoryMenu(false);
+    } else {
+      // 他ゲームを押した時も閉じる
+      setMemoryMenu(false);
+    }
+
+    currentMode = mode || "easy";
+    startSelectedMode();
   });
+});
+
 
   // Help
   onTap(helpBtn, () => { ensureAudio(); setScreen("help"); });
