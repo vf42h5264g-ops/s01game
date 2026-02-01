@@ -405,3 +405,23 @@ button:active{ transform: scale(0.98); }
   background: rgba(0,0,0,0.35);
   backdrop-filter: blur(6px);
 }
+
+.subModes{
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: -6px;
+  padding: 0 10px 6px;
+}
+
+.subModeBtn{
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: none;
+}
+
+/* サブが開いてる時に親ボタンをちょい強調したい場合（任意） */
+.modeBtn.isOpen{
+  filter: brightness(1.05);
+}
