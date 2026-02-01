@@ -271,6 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     board.innerHTML = "";
     setScreen("start");
+    setMemoryMenu(false);
   }
 
   // ctx：ゲームに渡す共通API
@@ -416,6 +417,7 @@ document.querySelectorAll(".modeBtn").forEach(btn => {
   // =========================
   // init
   // =========================
+  setMemoryMenu(false);
   renderPoints();
   setScreen("start");
 });
