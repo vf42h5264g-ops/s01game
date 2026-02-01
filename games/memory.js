@@ -15,10 +15,9 @@ export const MemoryGame = {
 
   destroy(ctx) {
     this._active = false;
-    // 反転待ちタイマー等を全消し
     this._timers.forEach((t) => clearTimeout(t));
     this._timers = [];
-    // 盤面を消す（イベントもDOMごと消える）
+
     if (ctx?.board) {
       ctx.board.innerHTML = "";
       ctx.board.classList.remove("layout-easy", "layout-12");
@@ -27,13 +26,14 @@ export const MemoryGame = {
   },
 
   start(ctx, opt = {}) {
-    // 直前の残骸を掃除
     this.destroy(ctx);
     this._active = true;
 
     const mode = opt.mode || ctx.getMode?.() || "easy";
-
     const BACK_SRC = "img/vback.jpg";
+
+    // クリア/終了の二重発火防止
+    let finished = false;
 
     // --- 盤面レイアウト
     ctx.board.classList.remove("layout-easy", "layout-12");
@@ -59,20 +59,58 @@ export const MemoryGame = {
     renderStatus();
 
     // --- カード構成
-    const totalKinds = (mode === "easy") ? 3 : 6; // easy=3 / normal,hard=6
+    const totalKinds = (mode === "easy") ? 3 : 6;
     const names = [];
     for (let i = 2; i < 2 + totalKinds; i++) {
       names.push("v" + i.toString().padStart(2, "0"));
     }
 
-    // v02.. を2枚ずつ
+    // 2枚ずつ
     const cards = [...names, ...names].sort(() => Math.random() - 0.5);
 
     // --- 状態
     let firstImg = null;
     let lock = false;
-    let startTime = Date.now();
+    const startTime = Date.now();
     let openedCount = 0;
+
+    // --- クリア時のポイント
+    function awardPointsOnce() {
+      if (finished) return; // 念のため
+      const pts = (mode === "easy") ? 0.5 : (mode === "normal") ? 1 : 2;
+      ctx?.addPoints?.(pts);
+    }
+
+    function finishWithResult({ title, timeSec }) {
+      if (finished) return;
+      finished = true;
+      this._active = false; // 追加タップ抑止（保険）
+
+      if (title === "PERFECT!!") {
+        awardPointsOnce();
+      }
+
+      ctx.showResult?.({
+        title,
+        timeSec,
+        mode,
+      });
+    }
+
+    // --- タップ共通（pointerdown + click）
+    function bindTap(el, fn) {
+      el.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        if (!MemoryGame._active) return;
+        fn(e);
+      }, { passive: false });
+
+      // 保険
+      el.addEventListener("click", (e) => {
+        if (!MemoryGame._active) return;
+        fn(e);
+      });
+    }
 
     // --- 1枚生成
     const makeCard = (name) => {
@@ -87,83 +125,65 @@ export const MemoryGame = {
 
       card.appendChild(img);
 
-      card.addEventListener(
-        "pointerdown",
-        (e) => {
-          e.preventDefault();
-          if (!this._active) return;
-          if (lock) return;
-          if (img.dataset.open === "1") return;
+      bindTap(card, () => {
+        if (!this._active || finished) return;
+        if (lock) return;
+        if (img.dataset.open === "1") return;
 
-          // open
-          img.src = `img/${name}.jpg`;
-          img.dataset.open = "1";
-          openedCount++;
+        // open
+        img.src = `img/${name}.jpg`;
+        img.dataset.open = "1";
+        openedCount++;
 
-          // SE（好みで：めくり音をbeepにするなど）
-          // ctx.playSfx?.("beep");
+        if (!firstImg) {
+          firstImg = img;
+          return;
+        }
 
-          if (!firstImg) {
-            firstImg = img;
-            return;
+        // 2枚目
+        lock = true;
+
+        const isMatch = firstImg.dataset.name === img.dataset.name;
+
+        if (isMatch) {
+          // 当たり
+          firstImg = null;
+          lock = false;
+
+          // クリア判定
+          if (openedCount >= cards.length) {
+            const timeSec = ((Date.now() - startTime) / 1000).toFixed(1);
+            finishWithResult.call(this, { title: "PERFECT!!", timeSec });
           }
+          return;
+        }
 
-          // 2枚目
-          lock = true;
+        // 外れ：少し見せて戻す
+        const t = setTimeout(() => {
+          if (!this._active || finished) return;
 
-          const isMatch = firstImg.dataset.name === img.dataset.name;
+          img.src = BACK_SRC;
+          firstImg.src = BACK_SRC;
 
-          if (isMatch) {
-            // 当たり
-            firstImg = null;
-            lock = false;
+          img.dataset.open = "0";
+          firstImg.dataset.open = "0";
 
-            // クリア判定
-            if (openedCount >= cards.length) {
-              // クリア
-              const timeSec = ((Date.now() - startTime) / 1000).toFixed(1);
-              // ctx.playSfx?.("go");
-              ctx.showResult?.({
-                title: "PERFECT!!",
-                timeSec,
-                mode,
-              });
-            }
-            return;
+          openedCount -= 2;
+
+          firstImg = null;
+          lock = false;
+
+          miss++;
+          renderStatus();
+
+          // HARD：BAD END
+          if (mode === "hard" && miss >= HARD_MAX_MISS) {
+            finishWithResult.call(this, { title: "BAD END…", timeSec: null });
           }
+        }, 800);
 
-          // 外れ：少し見せて戻す
-          const t = setTimeout(() => {
-            if (!this._active) return;
-
-            img.src = BACK_SRC;
-            firstImg.src = BACK_SRC;
-
-            img.dataset.open = "0";
-            firstImg.dataset.open = "0";
-
-            openedCount -= 2;
-
-            firstImg = null;
-            lock = false;
-
-            miss++;
-            renderStatus();
-
-            // HARD：BAD END
-            if (mode === "hard" && miss >= HARD_MAX_MISS) {
-              ctx.showResult?.({
-                title: "BAD END…",
-                timeSec: null,
-                mode,
-              });
-            }
-          }, 800);
-
-          this._timers.push(t);
-        },
-        { passive: false }
-      );
+        this._timers.push(t);
+      });
 
       return card;
     };
@@ -175,6 +195,7 @@ export const MemoryGame = {
     });
   },
 };
+
 
 
 
