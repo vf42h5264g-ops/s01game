@@ -425,3 +425,11 @@ button:active{ transform: scale(0.98); }
 .modeBtn.isOpen{
   filter: brightness(1.05);
 }
+
+.resultPoints{
+  margin-top: 6px;
+  opacity: 0.9;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ffd36a;
+}
