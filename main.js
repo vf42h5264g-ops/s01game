@@ -4,9 +4,34 @@ import { NTDGame } from "./games/ntd.js";
 import { CoinTossGame } from "./games/cointoss.js";
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("DOMContentLoaded: main.js running");
+  // =========================
+  // 共通ポイント（小数対応：10倍整数で保存）
+  // =========================
+  const LS_GLOBAL_POINTS_X10 = "qv_global_points_x10";
 
-  // ===== Screen =====
+  function getPoints() {
+    const v = Number(localStorage.getItem(LS_GLOBAL_POINTS_X10));
+    const x10 = Number.isFinite(v) ? v : 0;
+    return x10 / 10;
+  }
+
+  function addPoints(n) {
+    const curX10 = Math.round(getPoints() * 10);
+    const addX10 = Math.round(Number(n) * 10);
+    const nextX10 = curX10 + addX10;
+    localStorage.setItem(LS_GLOBAL_POINTS_X10, String(nextX10));
+    renderPoints();
+  }
+
+  function renderPoints() {
+    const el = document.getElementById("globalPoints");
+    if (!el) return;
+    el.textContent = `POINTS: ${getPoints().toFixed(1)}`;
+  }
+
+  // =========================
+  // Screen refs
+  // =========================
   const screens = {
     start: document.getElementById("startScreen"),
     help: document.getElementById("helpScreen"),
@@ -30,17 +55,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const donateBtn = document.getElementById("donateBtn");
   const shotBtn = document.getElementById("shotBtn");
 
-  const memorySubModes = document.getElementById("memorySubModes");
-let memoryMenuOpen = false;
-
-function toggleMemoryMenu(open) {
-  memoryMenuOpen = (open ?? !memoryMenuOpen);
-  if (memorySubModes) {
-    memorySubModes.classList.toggle("hidden", !memoryMenuOpen);
-  }
-}
-
-
   // ===== basic guards =====
   if (!screens.start || !screens.game || !board || !countdownEl) {
     alert("必要なHTML idが見つかりません（startScreen/gameScreen/board/countdown）");
@@ -52,29 +66,33 @@ function toggleMemoryMenu(open) {
     screens[name]?.classList.remove("hidden");
   }
 
-  // ===== tap handler (pointerdown + click) =====
-  // pointerdown が効かない環境でも click で必ず動くようにする
+  // =========================
+  // タップ共通（pointerdown + click）
+  // ※ sound/donate は click 専用にする（長押し問題回避）
+  // =========================
   function onTap(el, handler) {
     if (!el) return;
 
-    // click: 確実に発火する保険
+    // click（確実）
     el.addEventListener("click", (e) => {
+      if (el.disabled) return;
+      if (el.classList?.contains("hidden")) return;
       try { handler(e); } catch (err) { console.error(err); }
     });
 
-    // pointerdown: 体感レスポンス改善 + iOSでの音解錠にも使える
-    el.addEventListener(
-      "pointerdown",
-      (e) => {
-        // iOSのタップハイライトやスクロール暴発を抑える
-        e.preventDefault();
-        try { handler(e); } catch (err) { console.error(err); }
-      },
-      { passive: false }
-    );
+    // pointerdown（レスポンス改善）
+    el.addEventListener("pointerdown", (e) => {
+      if (el.disabled) return;
+      if (el.classList?.contains("hidden")) return;
+
+      e.preventDefault();
+      try { handler(e); } catch (err) { console.error(err); }
+    }, { passive: false });
   }
 
-  // ===== sound setting =====
+  // =========================
+  // Sound setting
+  // =========================
   let soundEnabled = true;
   try {
     const saved = localStorage.getItem("soundEnabled");
@@ -89,25 +107,26 @@ function toggleMemoryMenu(open) {
 
   // ===== HTMLAudio (iPhone安定寄り：clone再生) =====
   const SFX_BASE = {
-    beep: new Audio("sound/beep.wav"),
-    beep2: new Audio("sound/beep2.wav"),
-    go: new Audio("sound/go.wav"),
+    beep: new Audio("./sound/beep.wav"),
+    beep2: new Audio("./sound/beep2.wav"),
+    go: new Audio("./sound/go.wav"),
   };
   Object.values(SFX_BASE).forEach(a => { a.preload = "auto"; a.volume = 1.0; });
 
   let audioUnlocked = false;
   let audioPrimed = false;
 
-  // iOS解錠（無音で短く） + 初回の「ピコピコ」を抑えるため prime を一度だけ
+  // iOS解錠（極小音で短く）+ prime
   function ensureAudio() {
     if (audioUnlocked) return;
 
     audioUnlocked = true;
 
-    // 解錠は beep だけでOK（goを触らない）
     const a = SFX_BASE.beep;
     const v = a.volume;
-    a.volume = 0.0;
+
+    // 完全0だと効かない端末があるので極小
+    a.volume = 0.01;
     try { a.currentTime = 0; } catch {}
 
     a.play().then(() => {
@@ -117,11 +136,11 @@ function toggleMemoryMenu(open) {
       primeAudioOnce();
     }).catch(() => {
       a.volume = v;
+      // 失敗してもprimeは試す
       primeAudioOnce();
     });
   }
 
-  // デコード促進（音は鳴らさない/聞こえないようにする）
   function primeAudioOnce() {
     if (audioPrimed) return;
     audioPrimed = true;
@@ -143,8 +162,6 @@ function toggleMemoryMenu(open) {
     if (!soundEnabled) return;
     const base = SFX_BASE[key];
     if (!base) return;
-
-    // iOSは未解錠だと鳴らないことがあるので保険
     if (!audioUnlocked) return;
 
     const a = base.cloneNode();
@@ -153,7 +170,9 @@ function toggleMemoryMenu(open) {
     a.play().catch(() => {});
   }
 
-  // ===== countdown（基準時刻方式 + 初回ピコピコ抑制）=====
+  // =========================
+  // Countdown
+  // =========================
   let countdownRunning = false;
   let raf = 0;
   let finishTimer = 0;
@@ -191,7 +210,6 @@ function toggleMemoryMenu(open) {
         countdownEl.textContent = String(show);
         lastShown = show;
 
-        // 初回だけ音の多重/ズレを抑制
         if (!firstBeepDone) {
           firstBeepDone = true;
           requestAnimationFrame(() => {
@@ -221,7 +239,9 @@ function toggleMemoryMenu(open) {
     tick();
   }
 
-  // ===== game switcher =====
+  // =========================
+  // Game switcher
+  // =========================
   const games = {
     easy: MemoryGame,
     normal: MemoryGame,
@@ -237,7 +257,7 @@ function toggleMemoryMenu(open) {
     if (mode === "easy") return "EASY";
     if (mode === "normal") return "NORMAL";
     if (mode === "hard") return "HARD";
-    if (mode === "destroy") return "NT-D";
+    if (mode === "destroy") return "TEQUILA";
     if (mode === "cointoss") return "COIN";
     return mode;
   }
@@ -262,6 +282,10 @@ function toggleMemoryMenu(open) {
     ensureAudio,
     goToStart,
 
+    // ★共通ポイントAPI
+    addPoints,
+    getPoints,
+
     showResult({ title, timeSec, mode }) {
       if (resultMode) resultMode.textContent = modeLabel(mode);
       if (resultText) resultText.textContent = title || "";
@@ -284,14 +308,13 @@ function toggleMemoryMenu(open) {
     board.innerHTML = "";
 
     currentGame = games[currentMode];
-
     if (!currentGame) {
       alert("ゲームが見つかりません: " + currentMode);
       goToStart();
       return;
     }
 
-    // コイントスはカウントダウン無しで即開始
+    // コイントスは即開始
     if (currentMode === "cointoss") {
       setScreen("game");
       try {
@@ -313,60 +336,56 @@ function toggleMemoryMenu(open) {
     });
   }
 
-  // ===== events =====
+  // =========================
+  // Events: mode buttons
+  // =========================
   document.querySelectorAll(".modeBtn").forEach(btn => {
-  btn.addEventListener("click", (e) => {
-    const mode = btn.dataset.mode;
-
-    // MEMORY-GAME を押したら、サブ選択を開閉するだけ（ゲーム開始しない）
-    if (mode === "memory") {
+    onTap(btn, () => {
       ensureAudio();
-      toggleMemoryMenu();
-      return;
-    }
-
-    // サブモード（easy/normal/hard） or 他ゲーム（destroy/cointoss）
-    ensureAudio();
-    currentMode = mode || "easy";
-
-    // サブを選んだら閉じる（見た目スッキリ）
-    if (mode === "easy" || mode === "normal" || mode === "hard") {
-      toggleMemoryMenu(false);
-    } else {
-      // 他ゲーム選んだ時も閉じる
-      toggleMemoryMenu(false);
-    }
-
-    startSelectedMode();
+      currentMode = btn.dataset.mode || "easy";
+      startSelectedMode();
+    });
   });
-});
 
-
+  // Help
   onTap(helpBtn, () => { ensureAudio(); setScreen("help"); });
-
   onTap(backFromHelpBtn, () => { ensureAudio(); setScreen("start"); });
 
-  onTap(soundBtn, () => {
+  // Back / Retry
+  onTap(backBtn, () => { ensureAudio(); goToStart(); });
+  onTap(retryBtn, () => { ensureAudio(); startSelectedMode(); });
+
+  // Shot
+  onTap(shotBtn, () => { ensureAudio(); playSfx("go"); });
+
+  // =========================
+  // 🔊 Sound toggle（長押し回避のため click 専用）
+  // =========================
+  soundBtn?.addEventListener("click", () => {
     ensureAudio();
     soundEnabled = !soundEnabled;
     renderSoundIcon();
     try { localStorage.setItem("soundEnabled", soundEnabled ? "1" : "0"); } catch {}
   });
 
-  onTap(backBtn, () => { ensureAudio(); goToStart(); });
+  // =========================
+  // 🤝 Donate（PayPayリンクへ）
+  // =========================
+  const PAYPAY_URL = "https://qr.paypay.ne.jp/p2p01_ldqe82SQtNdc2a7q";
 
-  onTap(retryBtn, () => { ensureAudio(); startSelectedMode(); });
-
-  onTap(shotBtn, () => { ensureAudio(); playSfx("go"); });
-
-  onTap(donateBtn, () => {
+  donateBtn?.addEventListener("click", () => {
     ensureAudio();
-    alert("支援ありがとうございます！(仮)");
+    // 新規タブ（スマホだと同一タブになる場合あり）
+    window.open(PAYPAY_URL, "_blank", "noopener,noreferrer");
   });
 
+  // =========================
   // init
+  // =========================
+  renderPoints();
   setScreen("start");
 });
+
 
 
 
