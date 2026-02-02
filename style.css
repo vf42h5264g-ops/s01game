@@ -433,3 +433,54 @@ button:active{ transform: scale(0.98); }
   letter-spacing: 0.06em;
   color: #ffd36a;
 }
+
+/* ===== CARDDASS ===== */
+.cdRoot { max-width: 980px; margin: 0 auto; padding: 16px; color: #fff; }
+.cdHeader { margin-bottom: 12px; }
+.cdTitle { font-size: 28px; font-weight: 900; letter-spacing: .04em; }
+.cdSub { opacity: .85; margin-top: 4px; }
+
+.cdPanel { background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 12px; }
+.cdRow { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cdNote { opacity: .75; font-size: 12px; margin-top: 8px; }
+
+.cdResult { margin: 14px 0; min-height: 140px; }
+.cdMsg { padding: 12px; border-radius: 12px; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.12); }
+
+.cdLibrary { margin-top: 10px; }
+.cdLibHead { display:flex; justify-content: space-between; align-items:center; margin-bottom: 10px; }
+.cdDanger { background: #b00020; color:#fff; border:none; padding: 8px 10px; border-radius: 10px; }
+
+.cdGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+
+.cdMini { border-radius: 14px; padding: 10px; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.12); }
+.cdMini.locked { opacity: .55; filter: grayscale(1); }
+.cdMiniTop { font-weight: 800; font-size: 12px; opacity: .9; }
+.cdMiniName { margin: 10px 0; font-weight: 900; }
+.cdMiniBot { display:flex; justify-content: space-between; opacity: .95; font-weight: 800; }
+
+.cdBigWrap { display:flex; justify-content:center; }
+.cdBig { position: relative; width: min(940px, 96vw); aspect-ratio: 16/9; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,.18); }
+.cdBigBg { position:absolute; inset:0; background-size: cover; background-position: center; filter: saturate(1.05) contrast(1.05); opacity: .92; }
+.cdBigTop { position:absolute; left: 12px; right: 12px; top: 10px; display:flex; justify-content: space-between; font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,.65); }
+.cdBigName { position:absolute; left: 14px; top: 56px; font-size: 26px; font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,.65); }
+.cdBigStats { position:absolute; left: 14px; bottom: 18px; display:flex; gap: 12px; font-weight: 900; }
+.cdBigStats .stat { background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.18); padding: 8px 12px; border-radius: 999px; }
+.cdBigFoot { position:absolute; right: 14px; bottom: 18px; text-align: right; font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,.65); }
+
+.rarN { box-shadow: 0 0 0 2px rgba(200,200,200,.15) inset; }
+.rarR { box-shadow: 0 0 0 2px rgba(120,200,255,.22) inset; }
+.rarSR { box-shadow: 0 0 0 2px rgba(255,190,90,.22) inset; }
+.rarSSR { box-shadow: 0 0 0 2px rgba(255,110,180,.28) inset; }
+
+.shine::after {
+  content:"";
+  position:absolute; inset:-40%;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.28) 50%, transparent 70%);
+  transform: rotate(10deg);
+  animation: shineMove 1.2s linear infinite;
+}
+@keyframes shineMove {
+  0% { transform: translateX(-30%) rotate(10deg); }
+  100% { transform: translateX(30%) rotate(10deg); }
+}
