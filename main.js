@@ -2,6 +2,7 @@
 import { MemoryGame } from "./games/memory.js";
 import { NTDGame } from "./games/ntd.js";
 import { CoinTossGame } from "./games/cointoss.js";
+import { GachaGame } from "./games/gacha.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   // =========================
