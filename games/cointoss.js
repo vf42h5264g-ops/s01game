@@ -222,7 +222,7 @@ export const CoinTossGame = {
         if (el.disabled) return;
         if (el.classList?.contains("hidden")) return;
         e.preventDefault();
-        ctx?.ensureAudio?.();
+        ctx?.ensureAudioUnlocked?.();
         fn(e);
       }, { passive: false });
 
@@ -251,9 +251,9 @@ export const CoinTossGame = {
 
     // Back（Quattroへ戻る）
     onTap(btnBack, () => {
-      state.tossing = false;
-      ctx?.goToStart?.();
-    });
+  state.tossing = false;
+  (ctx?.goStart || ctx?.goToStart || ctx?.goStartScreen)?.call(ctx);
+});
 
     // =========================
     // QUICK
