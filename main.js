@@ -220,6 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
     hard: MemoryGame,
     destroy: NTDGame, // HTML側 data-mode="destroy"（TEQUILA-GAME）に合わせる
     cointoss: CoinTossGame,
+    gacha: GachaGame, // ★追加
   };
 
   // data-mode の吸収
