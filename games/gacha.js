@@ -1,4 +1,5 @@
-// games/gacha.js
+import { CARDS } from "../cards/cards.js";
+
 export const GachaGame = {
   id: "gacha",
 
@@ -11,27 +12,12 @@ export const GachaGame = {
     board.innerHTML = "";
 
     const LS = {
-      owned: "gacha_owned_v1",     // { id: count }
-      shards: "gacha_shards_v1",   // number
-      last: "gacha_last_v1",       // last card id
+      owned: "card_owned_v1",   // { [cardId]: count }
+      shards:"card_shards_v1",  // number
     };
 
-    const COST = 10; // 1回10P（好きに変更OK）
+    const COST = 10;
 
-    // ==== カード定義（まずは20枚くらいから）====
-    // あとで「画像URL」「説明」「攻撃/HP」など増やしてカードっぽくできる
-    const POOL = [
-      { id: "N_001", name: "アーリーリサイタル", rarity: "N" },
-      { id: "N_002", name: "雑用猫", rarity: "N" },
-      { id: "N_003", name: "ミニ樽テキーラ", rarity: "N" },
-      { id: "R_001", name: "運命のコイントス", rarity: "R" },
-      { id: "R_002", name: "夜更かしマイスター", rarity: "R" },
-      { id: "SR_001", name: "赤絨毯の城", rarity: "SR" },
-      { id: "SR_002", name: "必殺トス", rarity: "SR" },
-      { id: "SSR_001", name: "Quattro Vageena", rarity: "SSR" },
-    ];
-
-    // ==== レア抽選（確率は好きに調整）====
     const RARITY_RATE = [
       { rarity: "N",  p: 0.75 },
       { rarity: "R",  p: 0.20 },
@@ -39,169 +25,154 @@ export const GachaGame = {
       { rarity: "SSR",p: 0.005 },
     ];
 
-    function readJSON(key, fallback) {
-      try {
-        const s = localStorage.getItem(key);
-        return s ? JSON.parse(s) : fallback;
-      } catch {
-        return fallback;
-      }
-    }
-    function writeJSON(key, value) {
-      try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-    }
-    function readInt(key, fallback = 0) {
-      try {
-        const n = Number(localStorage.getItem(key));
-        return Number.isFinite(n) ? n : fallback;
-      } catch { return fallback; }
-    }
-    function writeInt(key, v) {
-      try { localStorage.setItem(key, String(v)); } catch {}
-    }
+    const readJSON = (k, fb) => { try { const s = localStorage.getItem(k); return s ? JSON.parse(s) : fb; } catch { return fb; } };
+    const writeJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+    const readInt = (k, fb=0) => { try { const n = Number(localStorage.getItem(k)); return Number.isFinite(n) ? n : fb; } catch { return fb; } };
+    const writeInt = (k, v) => { try { localStorage.setItem(k, String(v)); } catch {} };
 
-    let owned = readJSON(LS.owned, {});     // { cardId: count }
+    let owned = readJSON(LS.owned, {});
     let shards = readInt(LS.shards, 0);
 
-    // ==== UI ====
     const root = document.createElement("div");
-    root.className = "gachaRoot";
+    root.className = "cdRoot";
     board.appendChild(root);
 
     root.innerHTML = `
-      <div class="gachaHeader">
-        <div class="gachaTitle">CARDDASS</div>
-        <div class="gachaSub">共通ポイントで回せる懐かしカードダス</div>
+      <div class="cdHeader">
+        <div class="cdTitle">CARDDASS</div>
+        <div class="cdSub">共通Pで引ける・集める（バトルは後で実装）</div>
       </div>
 
-      <div class="gachaPanel">
-        <div class="gachaRow">
-          <div>所持P: <b id="gachaP"></b></div>
-          <div>欠片: <b id="gachaShards"></b></div>
+      <div class="cdPanel">
+        <div>所持P: <b id="cdP"></b> / 欠片: <b id="cdShards"></b></div>
+        <div class="cdBtns">
+          <button id="cdRoll">ガチャ（${COST}P）</button>
+          <button id="cdBack">Back</button>
         </div>
-        <div class="gachaRow">
-          <button id="gachaRoll">1回まわす（${COST}P）</button>
-          <button id="gachaBack">Back</button>
-        </div>
-        <div class="gachaNote">※重複は欠片+1（SR以上は+3）</div>
+        <div class="cdNote">重複：欠片+1（SR/SSRは+3）</div>
       </div>
 
-      <div id="gachaResult" class="gachaResult hidden"></div>
+      <div id="cdResult" class="cdResult"></div>
 
-      <div class="gachaCollection">
-        <div class="gachaCollectionHead">
-          <div>COLLECTION</div>
-          <button id="gachaClear" class="gachaDanger">図鑑リセット</button>
+      <div class="cdLibrary">
+        <div class="cdLibHead">
+          <div>LIBRARY</div>
+          <button id="cdReset" class="cdDanger">図鑑リセット</button>
         </div>
-        <div id="gachaGrid" class="gachaGrid"></div>
+        <div id="cdGrid" class="cdGrid"></div>
       </div>
     `;
 
-    const pEl = root.querySelector("#gachaP");
-    const shardsEl = root.querySelector("#gachaShards");
-    const rollBtn = root.querySelector("#gachaRoll");
-    const backBtn = root.querySelector("#gachaBack");
-    const resultEl = root.querySelector("#gachaResult");
-    const gridEl = root.querySelector("#gachaGrid");
-    const clearBtn = root.querySelector("#gachaClear");
+    const pEl = root.querySelector("#cdP");
+    const shardsEl = root.querySelector("#cdShards");
+    const gridEl = root.querySelector("#cdGrid");
+    const resultEl = root.querySelector("#cdResult");
 
-    function rarityColorClass(r) {
-      if (r === "SSR") return "rarSSR";
-      if (r === "SR") return "rarSR";
-      if (r === "R") return "rarR";
-      return "rarN";
-    }
+    const onTap = (el, fn) => {
+      if (!el) return;
+      el.addEventListener("pointerdown", (e) => { e.preventDefault(); ctx?.ensureAudioUnlocked?.(); fn(e); }, { passive:false });
+      el.addEventListener("click", (e) => { ctx?.ensureAudioUnlocked?.(); fn(e); });
+    };
+
+    const handIcon = (hand) => hand === "rock" ? "✊" : hand === "scissors" ? "✌" : "✋";
+
+    const rarityClass = (r) => r === "SSR" ? "rarSSR" : r === "SR" ? "rarSR" : r === "R" ? "rarR" : "rarN";
 
     function refreshTop() {
       pEl.textContent = String(ctx.getPoints?.() ?? 0);
       shardsEl.textContent = String(shards);
     }
 
-    function renderGrid() {
-      const ownedSet = new Set(Object.keys(owned));
-      gridEl.innerHTML = "";
-
-      POOL.forEach((c) => {
-        const cell = document.createElement("div");
-        const have = ownedSet.has(c.id);
-        const count = owned[c.id] || 0;
-
-        cell.className = `gachaCardMini ${rarityColorClass(c.rarity)} ${have ? "" : "locked"}`;
-        cell.innerHTML = `
-          <div class="miniTop">${c.rarity}</div>
-          <div class="miniName">${have ? c.name : "？？？"}</div>
-          <div class="miniCount">${have ? `x${count}` : ""}</div>
+    // テンプレ背景にステータスを重ねた “カード表示”
+    function renderCardHTML(card, locked=false, count=0) {
+      if (locked) {
+        return `
+          <div class="cdCardMini locked">
+            <div class="cdMiniTop">???</div>
+            <div class="cdMiniMid">？？？</div>
+          </div>
         `;
-        gridEl.appendChild(cell);
+      }
+
+      return `
+        <div class="cdCardMini ${rarityClass(card.rarity)}">
+          <div class="cdMiniTop">${card.rarity} / ${card.id}</div>
+          <div class="cdMiniMid">${card.name}</div>
+          <div class="cdMiniBot">
+            <span>P${card.power}</span>
+            <span>${handIcon(card.hand)}</span>
+            <span>x${count}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderGrid() {
+      gridEl.innerHTML = "";
+      CARDS.forEach((c) => {
+        const cnt = owned[c.id] || 0;
+        const cell = document.createElement("div");
+        cell.innerHTML = renderCardHTML(c, cnt === 0, cnt);
+        const cardEl = cell.firstElementChild;
+
+        // 詳細表示（クリックで大きく表示）
+        onTap(cardEl, () => {
+          if (cnt === 0) return;
+          resultEl.innerHTML = renderBigCard(c, cnt, false, 0);
+        });
+
+        gridEl.appendChild(cardEl);
       });
     }
 
     function pickRarity() {
       const r = Math.random();
       let acc = 0;
-      for (const it of RARITY_RATE) {
-        acc += it.p;
-        if (r <= acc) return it.rarity;
-      }
+      for (const it of RARITY_RATE) { acc += it.p; if (r <= acc) return it.rarity; }
       return "N";
     }
 
     function pickCardByRarity(rarity) {
-      const list = POOL.filter((c) => c.rarity === rarity);
+      const list = CARDS.filter(c => c.rarity === rarity);
       return list[Math.floor(Math.random() * list.length)];
     }
 
-    function showResultCard(card, isDup, shardGain) {
-      resultEl.classList.remove("hidden");
-      resultEl.innerHTML = `
-        <div class="gachaCard ${rarityColorClass(card.rarity)} ${card.rarity === "SSR" ? "shine" : ""}">
-          <div class="cardTop">
-            <div class="cardRarity">${card.rarity}</div>
-            <div class="cardId">${card.id}</div>
-          </div>
-          <div class="cardName">${card.name}</div>
-          <div class="cardBottom">
-            <div>${isDup ? "DUPLICATE" : "NEW!"}</div>
-            <div>${isDup ? `欠片 +${shardGain}` : ""}</div>
+    function renderBigCard(card, count, isDup, shardGain) {
+      // ここで “あなたのテンプレ画像” を背景にしてカードダス感を出す
+      // artは今はテンプレ固定でOK。カード個別に画像を持たせたくなったら art を差し替えるだけ。
+      return `
+        <div class="cdBigWrap">
+          <div class="cdBig ${rarityClass(card.rarity)} ${card.rarity==="SSR" ? "shine":""}">
+            <div class="cdBigBg" style="background-image:url('${card.art}')"></div>
+
+            <div class="cdBigTop">
+              <div>${card.rarity}</div>
+              <div>${card.id}</div>
+            </div>
+
+            <div class="cdBigName">${card.name}</div>
+
+            <div class="cdBigStats">
+              <div class="stat">P${card.power}</div>
+              <div class="stat">${handIcon(card.hand)}</div>
+              <div class="stat">x${count}</div>
+            </div>
+
+            <div class="cdBigFoot">
+              <div>${isDup ? "DUPLICATE" : "NEW!"}</div>
+              <div>${isDup ? `欠片 +${shardGain}` : ""}</div>
+            </div>
           </div>
         </div>
       `;
     }
 
-    function onTap(el, fn) {
-      if (!el) return;
-      el.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        ctx?.ensureAudioUnlocked?.();
-        fn(e);
-      }, { passive: false });
-      el.addEventListener("click", (e) => {
-        ctx?.ensureAudioUnlocked?.();
-        fn(e);
-      });
-    }
-
-    onTap(rollBtn, () => {
-      const haveP = ctx.getPoints?.() ?? 0;
-      if (haveP < COST) {
-        resultEl.classList.remove("hidden");
-        resultEl.innerHTML = `<div class="gachaMsg">ポイントが足りない！ (${COST}P必要)</div>`;
+    onTap(root.querySelector("#cdRoll"), () => {
+      // 1) 消費
+      const ok = ctx?.spendPoints?.(COST);
+      if (!ok) {
+        resultEl.innerHTML = `<div class="cdMsg">ポイントが足りない！（${COST}P必要）</div>`;
         return;
-      }
-
-      // 1) 消費（addPointsは増加専用の実装が多いので、ここは set 方式を避ける）
-      // いまの main.js は addPoints が「加算のみ」なので、消費は localStorage直書きが必要
-      // ただし “共通ポイント” を一元管理したいので、main.js側に spendPoints を足すのがベスト。
-      // ここでは暫定：負の加算を許容してる場合だけ引く。無理なら次の節で main.js 改修。
-      if (ctx.addPoints && ctx.addPoints.length >= 1) {
-        // ctx.addPoints が負数を弾く実装だと減らない → 次の節で spendPoints を追加して対応
-        const before = ctx.getPoints?.() ?? 0;
-        const after = before - COST;
-        if (after === before) {
-          resultEl.classList.remove("hidden");
-          resultEl.innerHTML = `<div class="gachaMsg">消費API未実装。main.jsに spendPoints を追加して！</div>`;
-          return;
-        }
       }
 
       // 2) 抽選
@@ -213,7 +184,6 @@ export const GachaGame = {
       const isDup = prev > 0;
       owned[card.id] = prev + 1;
       writeJSON(LS.owned, owned);
-      localStorage.setItem(LS.last, card.id);
 
       let shardGain = 0;
       if (isDup) {
@@ -223,7 +193,7 @@ export const GachaGame = {
       }
 
       // 4) 表示
-      showResultCard(card, isDup, shardGain);
+      resultEl.innerHTML = renderBigCard(card, owned[card.id], isDup, shardGain);
       renderGrid();
       refreshTop();
 
@@ -232,17 +202,14 @@ export const GachaGame = {
       else ctx.playSfx?.("beep");
     });
 
-    onTap(backBtn, () => {
-      (ctx.goStart || ctx.goToStart)?.();
-    });
+    onTap(root.querySelector("#cdBack"), () => (ctx.goStart || ctx.goToStart)?.());
 
-    onTap(clearBtn, () => {
-      // 図鑑リセット（ポイントは触らない）
+    onTap(root.querySelector("#cdReset"), () => {
       owned = {};
       shards = 0;
       writeJSON(LS.owned, owned);
       writeInt(LS.shards, shards);
-      resultEl.classList.add("hidden");
+      resultEl.innerHTML = "";
       renderGrid();
       refreshTop();
     });
@@ -250,5 +217,6 @@ export const GachaGame = {
     // 初期描画
     refreshTop();
     renderGrid();
-  },
+  }
 };
+
