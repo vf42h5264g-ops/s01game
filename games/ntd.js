@@ -76,20 +76,32 @@ export const NTDGame = {
     const bindTap = (el, fn) => {
       if (!el) return;
 
-      el.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        if (!this._active) return;
-        fn(e);
-      }, { passive: false });
+      el.addEventListener(
+        "pointerdown",
+        (e) => {
+          e.preventDefault();
+          if (!this._active) return;
+          ctx?.ensureAudioUnlocked?.();
+          fn(e);
+        },
+        { passive: false }
+      );
 
       el.addEventListener("click", (e) => {
         if (!this._active) return;
+        ctx?.ensureAudioUnlocked?.();
         fn(e);
       });
     };
 
+    const goStartSafe = () => {
+      // main.js 完全版: ctx.goStart
+      // 旧名対策: ctx.goToStart が残ってても吸収
+      (ctx?.goStart || ctx?.goToStart)?.();
+    };
+
     const showLoseOverlay = (lineText) => {
-      if (!this._active) return;
+      if (!this._active || finished) return;
 
       // 既存があれば消す
       if (this._overlayEl) {
@@ -160,7 +172,7 @@ export const NTDGame = {
       bindTap(back, () => {
         overlay.remove();
         this._overlayEl = null;
-        ctx.goToStart?.();
+        goStartSafe();
       });
 
       btnRow.appendChild(retry);
@@ -189,57 +201,69 @@ export const NTDGame = {
       card.appendChild(img);
       ctx.board.appendChild(card);
 
-      card.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        if (!this._active || finished) return;
-        if (lock) return;
-        if (img.dataset.open === "1") return;
+      card.addEventListener(
+        "pointerdown",
+        (e) => {
+          e.preventDefault();
+          if (!this._active || finished) return;
+          if (lock) return;
+          if (img.dataset.open === "1") return;
 
-        img.src = `img/${name}.jpg`;
-        img.dataset.open = "1";
+          img.src = `img/${name}.jpg`;
+          img.dataset.open = "1";
 
-        // v03 = 即負け
-        if (name === "v03") {
-          lock = true;
-          ctx.playSfx?.("go");
+          // v03 = 即負け
+          if (name === "v03") {
+            lock = true;
+            ctx.playSfx?.("go");
 
-          const t = setTimeout(() => {
-            if (!this._active || finished) return;
-            showLoseOverlay(pickLine());
-          }, 60);
-          this._timers.push(t);
-          return;
-        }
+            const t = setTimeout(() => {
+              if (!this._active || finished) return;
+              showLoseOverlay(pickLine());
+            }, 60);
+            this._timers.push(t);
+            return;
+          }
 
-        // safe
-        safeOpened++;
-        renderStatus();
+          // safe
+          safeOpened++;
+          renderStatus();
 
-        if (safeOpened >= 11) {
-          lock = true;
+          if (safeOpened >= 11) {
+            lock = true;
 
-          const t = setTimeout(() => {
-            if (!this._active || finished) return;
+            const t = setTimeout(() => {
+              if (!this._active || finished) return;
 
-            finished = true; // ★二重発火防止
-            const timeSec = ((Date.now() - startTime) / 1000).toFixed(1);
+              finished = true; // ★二重発火防止
+              const timeSec = Number(((Date.now() - startTime) / 1000).toFixed(1));
 
-            // ★クリア報酬：共通ポイント +10
-            ctx?.addPoints?.(10);
+              // ★クリア報酬
+              const earned = 10;
 
-            ctx.showResult?.({
-              title: "SURVIVED!!",
-              timeSec,
-              mode,
-            });
-          }, 200);
+              // 合計ポイントへ加算（main.js側の表示も更新される）
+              ctx?.addPoints?.(earned);
+              // 画面上の +10 演出（あれば）
+              ctx?.showPointGain?.(earned);
 
-          this._timers.push(t);
-        }
-      }, { passive: false });
+              // ★ここが今回の改善点：獲得ポイントを渡す
+              ctx.showResult?.({
+                title: "SURVIVED!!",
+                timeSec,
+                mode,
+                pointsEarned: earned,
+              });
+            }, 200);
+
+            this._timers.push(t);
+          }
+        },
+        { passive: false }
+      );
     });
   },
 };
+
 
 
 
