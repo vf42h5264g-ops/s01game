@@ -229,7 +229,7 @@ export const CoinTossGame = {
       el.addEventListener("click", (e) => {
         if (el.disabled) return;
         if (el.classList?.contains("hidden")) return;
-        ctx?.ensureAudio?.();
+        ctx?.ensureAudioUnlocked?.();
         fn(e);
       });
     }
