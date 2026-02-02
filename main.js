@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const resultText = document.getElementById("resultText");
   const resultMode = document.getElementById("resultMode");
-  const resultPoints = document.getElementById("resultPoints"); // あれば使う
+  const resultPoints = document.getElementById("resultPoints");
   const timeText = document.getElementById("timeText");
 
   // footer buttons
@@ -34,15 +34,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const backBtn = document.getElementById("backBtn"); // モード選択
   const retryBtn = document.getElementById("retryBtn"); // もう1回
 
+  // start screen memory sub menu
+  const memorySubModes = document.getElementById("memorySubModes");
+
   // basic guard
   if (!screens.start || !screens.game || !board || !countdownEl) {
     alert("必要なHTML idが見つかりません（startScreen/gameScreen/board/countdown）");
     return;
-  }
-
-  function setScreen(name) {
-    Object.values(screens).forEach((s) => s && s.classList.add("hidden"));
-    screens[name]?.classList.remove("hidden");
   }
 
   // =========================
@@ -65,6 +63,26 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   let totalPoints = readInt(LS_POINTS, 0);
+
+  function renderPoints() {
+    const el = document.getElementById("globalPoints");
+    if (!el) return;
+    // HTMLは "POINTS: 0.0" 形式なので合わせる
+    el.textContent = `POINTS: ${Number(totalPoints || 0).toFixed(1)}`;
+  }
+
+  // =========================
+  // Screen switch
+  // =========================
+  function setScreen(name) {
+    Object.values(screens).forEach((s) => s && s.classList.add("hidden"));
+    screens[name]?.classList.remove("hidden");
+
+    // ★スタートへ戻るたびにポイント表示同期
+    if (name === "start") {
+      renderPoints();
+    }
+  }
 
   // =========================
   // Sound Enabled toggle
@@ -100,15 +118,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (audioUnlocked) return;
     audioUnlocked = true;
 
-    // iOS解錠：beepを無音で一瞬再生して止める（goは鳴らさない）
+    // iOS解錠：beepを無音で一瞬再生して止める
     const a = SFX.beep;
     const v = a.volume;
     a.volume = 0.0;
-    try { a.currentTime = 0; } catch {}
+    try {
+      a.currentTime = 0;
+    } catch {}
     a.play()
       .then(() => {
         a.pause();
-        try { a.currentTime = 0; } catch {}
+        try {
+          a.currentTime = 0;
+        } catch {}
         a.volume = v;
       })
       .catch(() => {
@@ -123,7 +145,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const a = base.cloneNode();
     a.volume = base.volume;
-    try { a.currentTime = 0; } catch {}
+    try {
+      a.currentTime = 0;
+    } catch {}
     a.play().catch(() => {});
   }
 
@@ -194,27 +218,24 @@ document.addEventListener("DOMContentLoaded", () => {
     easy: MemoryGame,
     normal: MemoryGame,
     hard: MemoryGame,
-    destroy: NTDGame,
+    destroy: NTDGame, // HTML側 data-mode="destroy"（TEQUILA-GAME）に合わせる
     cointoss: CoinTossGame,
   };
 
-  // ✅ data-mode のタイポ吸収（ここが「未対応モード」対策の本丸）
+  // data-mode の吸収
   function normalizeMode(raw) {
     const m = String(raw || "").toLowerCase().trim();
 
-    // よくあるタイポ救済
     if (m === "eazy") return "easy";
     if (m === "heard") return "hard";
 
-    // 表記ブレ救済
     if (m === "nt-d" || m === "ntd" || m === "tequila") return "destroy";
     if (m === "coin" || m === "cointoss" || m === "coin-toss") return "cointoss";
 
-    // 正常系
-    if (m === "easy" || m === "normal" || m === "hard" || m === "destroy") return m;
+    if (m === "easy" || m === "normal" || m === "hard" || m === "destroy" || m === "cointoss") return m;
 
-    // 空 or 不明 → easy
-    return "easy";
+    // 重要：memory は「開始しない」のでここでeasyに丸めない（呼び元で分岐）
+    return "";
   }
 
   let currentMode = "easy";
@@ -229,30 +250,23 @@ document.addEventListener("DOMContentLoaded", () => {
     return String(mode || "");
   }
 
-  // ✅ overlay 等の残骸を強制で消す（戻る/モード選択が効かない対策）
+  // overlay 等の残骸を強制で消す
   function hardCleanup() {
-    // NTDの負けoverlay
     document.getElementById("tequilaOverlay")?.remove();
-
-    // もし支援overlay等を今後足すならここに追加
     document.getElementById("donateOverlay")?.remove();
-
-    // board内にゲームが独自で作った画面が残っても消す
-    // （CoinTossが board を使わず body に作ってた場合の保険は↑にID追加してね）
   }
 
-  function goStart() {
-    cancelCountdown();
-
-    // ゲーム側destroy
-    try {
-      if (currentGame?.destroy) currentGame.destroy(ctx);
-    } catch {}
-
-    hardCleanup();
-    board.innerHTML = "";
-    if (missArea) missArea.textContent = "";
-    setScreen("start");
+  // =========================
+  // Tap helper（pointerdown + click）
+  // =========================
+  function bindTap(el, handler) {
+    if (!el) return;
+    const h = (e) => {
+      e.preventDefault?.();
+      handler(e);
+    };
+    el.addEventListener("pointerdown", h, { passive: false });
+    el.addEventListener("click", h, { passive: false });
   }
 
   // =========================
@@ -278,6 +292,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (add <= 0) return totalPoints;
       totalPoints += add;
       writeInt(LS_POINTS, totalPoints);
+
+      // ★ここで必ず表示更新（start画面に戻った時も setScreenで更新される）
+      renderPoints();
+
       return totalPoints;
     },
     getPoints() {
@@ -332,19 +350,43 @@ document.addEventListener("DOMContentLoaded", () => {
     },
   };
 
-  function startSelectedMode() {
-    cancelCountdown();
-
-    // 前のゲームを掃除
+  // =========================
+  // Lifecycle
+  // =========================
+  function destroyCurrentGame() {
     try {
       if (currentGame?.destroy) currentGame.destroy(ctx);
     } catch {}
+    currentGame = null;
+  }
+
+  function goStart() {
+    cancelCountdown();
+    destroyCurrentGame();
+    hardCleanup();
+
+    board.innerHTML = "";
+    if (missArea) missArea.textContent = "";
+    countdownEl.classList.add("hidden");
+
+    // ★memoryサブメニューは閉じておく
+    memorySubModes?.classList.add("hidden");
+
+    setScreen("start");
+  }
+
+  function startSelectedMode() {
+    cancelCountdown();
+
+    destroyCurrentGame();
     hardCleanup();
     board.innerHTML = "";
+    if (missArea) missArea.textContent = "";
 
     currentGame = games[currentMode];
     if (!currentGame) {
       alert("未対応モード: " + currentMode);
+      goStart();
       return;
     }
 
@@ -361,29 +403,48 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // Tap helper（iOSでpointerdownが拾えない時の保険にclickも付ける）
-  // =========================
-  function bindTap(el, handler) {
-    if (!el) return;
-    const h = (e) => {
-      e.preventDefault?.();
-      handler(e);
-    };
-    el.addEventListener("pointerdown", h, { passive: false });
-    el.addEventListener("click", h, { passive: false });
-  }
-
-  // =========================
   // Events
   // =========================
-  document.querySelectorAll(".modeBtn").forEach((btn) => {
+
+  // --- Start Screen: MEMORY-GAME entry (open/close sub modes, NOT start) ---
+  const startRoot = screens.start;
+
+  const memoryEntry = startRoot.querySelector('.modeBtn[data-mode="memory"]');
+  bindTap(memoryEntry, () => {
+    ensureAudioUnlocked();
+    memorySubModes?.classList.toggle("hidden");
+  });
+
+  // --- Start Screen: Memory sub modes (start memory with selected difficulty) ---
+  startRoot.querySelectorAll("#memorySubModes .subModeBtn").forEach((btn) => {
     bindTap(btn, () => {
       ensureAudioUnlocked();
-      currentMode = normalizeMode(btn.dataset.mode);
+      const m = normalizeMode(btn.dataset.mode); // easy/normal/hard
+      if (!m) return;
+      currentMode = m;
+      memorySubModes?.classList.add("hidden");
       startSelectedMode();
     });
   });
 
+  // --- Start Screen: Other games (start directly) ---
+  const tequilaBtn = startRoot.querySelector('.modeBtn[data-mode="destroy"]');
+  bindTap(tequilaBtn, () => {
+    ensureAudioUnlocked();
+    currentMode = "destroy";
+    memorySubModes?.classList.add("hidden");
+    startSelectedMode();
+  });
+
+  const coinBtn = startRoot.querySelector('.modeBtn[data-mode="cointoss"]');
+  bindTap(coinBtn, () => {
+    ensureAudioUnlocked();
+    currentMode = "cointoss";
+    memorySubModes?.classList.add("hidden");
+    startSelectedMode();
+  });
+
+  // --- Help ---
   bindTap(helpBtn, () => {
     ensureAudioUnlocked();
     setScreen("help");
@@ -394,24 +455,30 @@ document.addEventListener("DOMContentLoaded", () => {
     setScreen("start");
   });
 
+  // --- Sound ---
   bindTap(soundBtn, () => {
     ensureAudioUnlocked();
     soundEnabled = !soundEnabled;
     renderSoundIcon();
-    try { localStorage.setItem("soundEnabled", soundEnabled ? "1" : "0"); } catch {}
+    try {
+      localStorage.setItem("soundEnabled", soundEnabled ? "1" : "0");
+    } catch {}
   });
 
-  // ✅ ここが「モード選択ボタン」
+  // --- Result Buttons ---
   bindTap(backBtn, () => {
+    // モード選択 = スタートへ戻る（ここは絶対に goStart）
     ensureAudioUnlocked();
     goStart();
   });
 
   bindTap(retryBtn, () => {
+    // もう1回 = 同じモードでやり直し
     ensureAudioUnlocked();
     startSelectedMode();
   });
 
+  // --- Footer ---
   bindTap(shotBtn, () => {
     ensureAudioUnlocked();
     playSfx("go");
@@ -425,8 +492,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // =========================
   // init
   // =========================
+  renderPoints();
   setScreen("start");
 });
+
 
 
 
