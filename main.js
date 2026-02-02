@@ -234,7 +234,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (m === "nt-d" || m === "ntd" || m === "tequila") return "destroy";
     if (m === "coin" || m === "cointoss" || m === "coin-toss") return "cointoss";
 
-    if (m === "easy" || m === "normal" || m === "hard" || m === "destroy" || m === "cointoss") return m;
+    if (m === "easy" || m === "normal" || m === "hard" || m === "destroy" || m === "cointoss" || m === "gacha") return m;
 
     // 重要：memory は「開始しない」のでここでeasyに丸めない（呼び元で分岐）
     return "";
@@ -294,6 +294,18 @@ document.addEventListener("DOMContentLoaded", () => {
       if (add <= 0) return totalPoints;
       totalPoints += add;
       writeInt(LS_POINTS, totalPoints);
+
+    spendPoints(n) {
+      const cost = Number(n) || 0;
+      if (cost <= 0) return false;
+      if (totalPoints < cost) return false;
+
+      totalPoints -= cost;
+      writeInt(LS_POINTS, totalPoints);
+      renderPoints();
+      return true;
+    },
+
 
       // ★ここで必ず表示更新（start画面に戻った時も setScreenで更新される）
       renderPoints();
@@ -444,6 +456,21 @@ document.addEventListener("DOMContentLoaded", () => {
     currentMode = "cointoss";
     memorySubModes?.classList.add("hidden");
     startSelectedMode();
+  });
+
+  const gachaBtn = startRoot.querySelector('.modeBtn[data-mode="gacha"]');
+  bindTap(gachaBtn, () => {
+    ensureAudioUnlocked();
+    currentMode = "gacha";
+    memorySubModes?.classList.add("hidden");
+    // ガチャはカウントダウン無しが気持ちいい
+    setScreen("game");
+    destroyCurrentGame();
+    hardCleanup();
+    board.innerHTML = "";
+    if (missArea) missArea.textContent = "";
+    currentGame = games[currentMode];
+    currentGame.start(ctx, { mode: currentMode });
   });
 
   // --- Help ---
