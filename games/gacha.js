@@ -167,31 +167,28 @@ export const GachaGame = {
       `;
     }
 
-    onTap(root.querySelector("#cdRoll"), () => {
-      // 1) 消費
-      onTap(rollBtn, () => {
-        const before = ctx.getPoints?.() ?? 0;
+    const rollBtn = root.querySelector("#cdRoll"); // ※既にあるなら重複しないように
+    onTap(rollBtn, () => {
+      const before = ctx.getPoints?.() ?? 0;
 
-        if (!ctx.spendPoints?.(COST)) {
-          resultEl.innerHTML = `<div class="cdMsg">ポイントが足りない！（${COST}P必要 / 現在 ${before}P）</div>`;
-          return;
-        }
+    // 1) 消費（不足ならここで止まる）
+      if (!ctx.spendPoints?.(COST)) {
+        resultEl.innerHTML = `<div class="cdMsg">ポイントが足りない！（${COST}P必要 / 現在 ${before}P）</div>`;
+        return;
+      }
 
-  // ここから先で抽選・付与
-
-  });
-
-
-      // 2) 抽選
+    // 2) 抽選
       const rarity = pickRarity();
       const card = pickCardByRarity(rarity);
 
-      // 3) 所持更新
+    // 3) 所持更新
       const prev = owned[card.id] || 0;
       const isDup = prev > 0;
+
       owned[card.id] = prev + 1;
       writeJSON(LS.owned, owned);
 
+    // 4) 重複 → 欠片
       let shardGain = 0;
       if (isDup) {
         shardGain = (rarity === "SR" || rarity === "SSR") ? 3 : 1;
@@ -199,15 +196,16 @@ export const GachaGame = {
         writeInt(LS.shards, shards);
       }
 
-      // 4) 表示
-      resultEl.innerHTML = renderBigCard(card, owned[card.id], isDup, shardGain);
+      // 5) 表示更新
+      resultEl.innerHTML = renderBig(card, owned[card.id], isDup, shardGain);
       renderGrid();
       refreshTop();
 
-      // 5) SFX
+      // 6) SFX
       if (rarity === "SSR") ctx.playSfx?.("go");
       else ctx.playSfx?.("beep");
     });
+
 
     onTap(root.querySelector("#cdBack"), () => (ctx.goStart || ctx.goToStart)?.());
 
