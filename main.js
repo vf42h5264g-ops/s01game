@@ -289,58 +289,58 @@ document.addEventListener("DOMContentLoaded", () => {
     },
 
     // ---- Points API ----
-addPoints(n) {
-  const add = Number(n) || 0;
-  if (add <= 0) return totalPoints;
+  addPoints(n) {
+    const add = Number(n) || 0;
+    if (add <= 0) return totalPoints;
 
-  totalPoints += add;
-  writeInt(LS_POINTS, totalPoints);
+    totalPoints += add;
+    writeInt(LS_POINTS, totalPoints);
 
   // ★ここで表示更新
-  renderPoints();
+    renderPoints();
 
-  return totalPoints;
-},
+    return totalPoints;
+  },
 
-spendPoints(n) {
-  const cost = Number(n) || 0;
-  if (cost <= 0) return false;
-  if (totalPoints < cost) return false;
+  spendPoints(n) {
+    const cost = Number(n) || 0;
+    if (cost <= 0) return false;
+    if (totalPoints < cost) return false;
 
-  totalPoints -= cost;
-  writeInt(LS_POINTS, totalPoints);
+    totalPoints -= cost;
+    writeInt(LS_POINTS, totalPoints);
 
-  renderPoints();
-  return true;
-},
+    renderPoints();
+    return true;
+  },
 
-getPoints() {
-  return totalPoints;
-},
+  getPoints() {
+    return totalPoints;
+  },
 
-showPointGain(n) {
-  const gain = Number(n) || 0;
-  if (!gain) return;
+  showPointGain(n) {
+    const gain = Number(n) || 0;
+    if (!gain) return;
 
-  const el = document.createElement("div");
-  el.textContent = `+${gain} P`;
-  el.style.position = "fixed";
-  el.style.left = "50%";
-  el.style.top = "18%";
-  el.style.transform = "translateX(-50%)";
-  el.style.padding = "10px 14px";
-  el.style.borderRadius = "14px";
-  el.style.background = "rgba(0,0,0,0.72)";
-  el.style.border = "1px solid rgba(255,255,255,0.18)";
-  el.style.color = "#ffd36a";
-  el.style.fontWeight = "900";
-  el.style.letterSpacing = "0.06em";
-  el.style.zIndex = "99999";
-  el.style.pointerEvents = "none";
-  document.body.appendChild(el);
+    const el = document.createElement("div");
+    el.textContent = `+${gain} P`;
+    el.style.position = "fixed";
+    el.style.left = "50%";
+    el.style.top = "18%";
+    el.style.transform = "translateX(-50%)";
+    el.style.padding = "10px 14px";
+    el.style.borderRadius = "14px";
+    el.style.background = "rgba(0,0,0,0.72)";
+    el.style.border = "1px solid rgba(255,255,255,0.18)";
+    el.style.color = "#ffd36a";
+    el.style.fontWeight = "900";
+    el.style.letterSpacing = "0.06em";
+    el.style.zIndex = "99999";
+    el.style.pointerEvents = "none";
+    document.body.appendChild(el);
 
-  setTimeout(() => el.remove(), 1100);
-},
+    setTimeout(() => el.remove(), 1100);
+  },
 
 
     // ---- Result UI ----
