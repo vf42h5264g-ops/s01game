@@ -68,9 +68,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderPoints() {
     const el = document.getElementById("globalPoints");
     if (!el) return;
-    // HTMLは "POINTS: 0.0" 形式なので合わせる
-    el.textContent = `POINTS: ${Number(totalPoints || 0).toFixed(1)}`;
+    el.textContent = `POINTS: ${Math.floor(Number(totalPoints || 0))}`;
   }
+
 
   // =========================
   // Screen switch
@@ -290,17 +290,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ---- Points API ----
   addPoints(n) {
-    const add = Number(n) || 0;
+    const add = Math.floor(Number(n) || 0);
     if (add <= 0) return totalPoints;
 
-    totalPoints += add;
+    totalPoints = Math.floor(Number(totalPoints) || 0) + add;
     writeInt(LS_POINTS, totalPoints);
-
-  // ★ここで表示更新
     renderPoints();
-
     return totalPoints;
   },
+
 
   spendPoints(n) {
     const cost = Number(n) || 0;
