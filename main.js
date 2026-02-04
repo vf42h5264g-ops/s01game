@@ -292,10 +292,13 @@ document.addEventListener("DOMContentLoaded", () => {
     addPoints(n) {
       const add = Number(n) || 0;
       if (add <= 0) return totalPoints;
+
       totalPoints += add;
       writeInt(LS_POINTS, totalPoints);
+      renderPoints();
+      return totalPoints;
     },
-    
+  
     spendPoints(n) {
       const cost = Number(n) || 0;
       if (cost <= 0) return false;
@@ -304,8 +307,9 @@ document.addEventListener("DOMContentLoaded", () => {
       totalPoints -= cost;
       writeInt(LS_POINTS, totalPoints);
       renderPoints();
-      return true;
+     return true;
     },
+
 
 
       // ★ここで必ず表示更新（start画面に戻った時も setScreenで更新される）
