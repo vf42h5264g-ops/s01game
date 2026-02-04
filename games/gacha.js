@@ -169,11 +169,18 @@ export const GachaGame = {
 
     onTap(root.querySelector("#cdRoll"), () => {
       // 1) 消費
-      const ok = ctx?.spendPoints?.(COST);
-      if (!ok) {
-        resultEl.innerHTML = `<div class="cdMsg">ポイントが足りない！（${COST}P必要）</div>`;
-        return;
-      }
+      onTap(rollBtn, () => {
+        const before = ctx.getPoints?.() ?? 0;
+
+        if (!ctx.spendPoints?.(COST)) {
+          resultEl.innerHTML = `<div class="cdMsg">ポイントが足りない！（${COST}P必要 / 現在 ${before}P）</div>`;
+          return;
+        }
+
+  // ここから先で抽選・付与
+  ...
+});
+
 
       // 2) 抽選
       const rarity = pickRarity();
