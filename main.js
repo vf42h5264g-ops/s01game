@@ -295,6 +295,7 @@ document.addEventListener("DOMContentLoaded", () => {
       totalPoints += add;
       writeInt(LS_POINTS, totalPoints);
     },
+    
     spendPoints(n) {
       const cost = Number(n) || 0;
       if (cost <= 0) return false;
