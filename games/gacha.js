@@ -167,44 +167,53 @@ export const GachaGame = {
       `;
     }
 
-    const rollBtn = root.querySelector("#cdRoll"); // ※既にあるなら重複しないように
-    onTap(rollBtn, () => {
-      const before = ctx.getPoints?.() ?? 0;
+    const rollBtn = root.querySelector("#cdRoll");
 
-    // 1) 消費（不足ならここで止まる）
-      if (!ctx.spendPoints?.(COST)) {
-        resultEl.innerHTML = `<div class="cdMsg">ポイントが足りない！（${COST}P必要 / 現在 ${before}P）</div>`;
-        return;
-      }
+　　let rolling = false;
 
-    // 2) 抽選
-      const rarity = pickRarity();
-      const card = pickCardByRarity(rarity);
+　　onTap(rollBtn, () => {
+　　  if (rolling) return;         // ★二重発火ガード
+　　  rolling = true;
 
-    // 3) 所持更新
-      const prev = owned[card.id] || 0;
-      const isDup = prev > 0;
+　　  try {
+　　    const before = ctx.getPoints?.() ?? 0;
 
-      owned[card.id] = prev + 1;
-      writeJSON(LS.owned, owned);
+ 　　   if (!ctx.spendPoints?.(COST)) {
+ 　　     resultEl.innerHTML = `<div class="cdMsg">ポイントが足りない！（${COST}P必要 / 現在 ${before}P）</div>`;
+ 　　     return;
+　　    }
 
-    // 4) 重複 → 欠片
-      let shardGain = 0;
-      if (isDup) {
-        shardGain = (rarity === "SR" || rarity === "SSR") ? 3 : 1;
-        shards += shardGain;
-        writeInt(LS.shards, shards);
-      }
+   　　 // 2) 抽選
+  　　  const rarity = pickRarity();
+  　　  const card = pickCardByRarity(rarity);
 
-      // 5) 表示更新
-      resultEl.innerHTML = renderBig(card, owned[card.id], isDup, shardGain);
-      renderGrid();
-      refreshTop();
+　　    // 3) 所持更新
+ 　　   const prev = owned[card.id] || 0;
+  　　  const isDup = prev > 0;
+  　　  owned[card.id] = prev + 1;
+  　　  writeJSON(LS.owned, owned);
 
-      // 6) SFX
-      if (rarity === "SSR") ctx.playSfx?.("go");
-      else ctx.playSfx?.("beep");
-    });
+  　　  // 4) 重複 → 欠片
+  　　  let shardGain = 0;
+  　　  if (isDup) {
+    　　  shardGain = (rarity === "SR" || rarity === "SSR") ? 3 : 1;
+    　　  shards += shardGain;
+    　　  writeInt(LS.shards, shards);
+  　　  }
+
+  　　  // 5) 表示更新
+  　　  resultEl.innerHTML = renderBig(card, owned[card.id], isDup, shardGain);
+  　　  renderGrid();
+  　　  refreshTop();
+
+   　　 // 6) SFX
+  　　  if (rarity === "SSR") ctx.playSfx?.("go");
+ 　　   else ctx.playSfx?.("beep");
+　　  } finally {
+ 　　   rolling = false;
+　　  }
+　　});
+
 
 
     onTap(root.querySelector("#cdBack"), () => (ctx.goStart || ctx.goToStart)?.());
