@@ -605,3 +605,42 @@ button:active{ transform: scale(0.98); }
   width: 11%;
   height: 5.2%;
 }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #000; /* 余白が出ても黒で統一 */
+}
+
+#startScreen {
+  min-height: 100dvh; /* iPhoneのUI込みでも安定 */
+  display: flex;
+  justify-content: center;
+  align-items: center; /* 中央 */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 画面高に合わせて筐体を最大化 */
+.machine {
+  position: relative;
+  height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  width: auto;
+  aspect-ratio: 1365 / 2048;
+}
+
+/* 画像はクリックを“食わない”ようにする */
+.machine-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* 端が切れない */
+  pointer-events: none; /* ←超重要 */
+  border-radius: 16px;
+}
+
+/* 当たり判定は必ず前面へ */
+.hit { z-index: 10; }
+.machine-points, .machine-footer { z-index: 9; pointer-events: none; }
