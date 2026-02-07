@@ -428,16 +428,10 @@ document.addEventListener("DOMContentLoaded", () => {
 // Events
 // =========================
 
-// --- Start Screen: unified handler (works for .modeBtn and .hit buttons) ---
+// --- Start Screen: event delegation (works for .hit buttons) ---
 const startRoot = screens.start;
 
-// memory のトグル判定（memoryボタンだけは「開始」じゃなくて「サブ表示」）
-function isMemoryEntry(el) {
-  return el?.dataset?.mode && String(el.dataset.mode).toLowerCase() === "memory";
-}
-
 bindTap(startRoot, (e) => {
-  // startRoot 自体に bindTap してるので、e.target から拾う
   const target = e.target.closest("[data-mode]");
   if (!target) return;
 
@@ -445,22 +439,20 @@ bindTap(startRoot, (e) => {
 
   const raw = target.dataset.mode;
 
-  // MEMORY-GAME は開始せず、サブモード開閉
+  // MEMORY は開始せずサブモード開閉
   if (String(raw).toLowerCase() === "memory") {
     memorySubModes?.classList.toggle("hidden");
     return;
   }
 
-  // サブモード (easy/normal/hard) など
+  // easy/normal/hard/destroy/cointoss/gacha
   const m = normalizeMode(raw);
   if (!m) return;
 
   currentMode = m;
-
-  // memoryサブは閉じる
   memorySubModes?.classList.add("hidden");
 
-  // ガチャはカウントダウン無しが気持ちいい（現行踏襲）
+  // ガチャはカウントダウン無し（現状踏襲）
   if (currentMode === "gacha") {
     setScreen("game");
     destroyCurrentGame();
@@ -472,7 +464,6 @@ bindTap(startRoot, (e) => {
     return;
   }
 
-  // それ以外は通常開始
   startSelectedMode();
 });
 
