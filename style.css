@@ -564,3 +564,35 @@ button:active{ transform: scale(0.98); }
 
 /* デバッグ中だけON */
 .hit { outline: 2px solid rgba(0,255,255,.5); }
+
+/* MEMORY-GAME */
+.hit.mem {
+  left: 10%;
+  top: 23.0%;
+  width: 38%;
+  height: 5.2%;
+}
+
+/* TEQUILA-GAME */
+.hit.teq {
+  left: 52%;
+  top: 23.0%;
+  width: 38%;
+  height: 5.2%;
+}
+
+/* COIN-TOSS */
+.hit.coin {
+  left: 10%;
+  top: 29.0%;
+  width: 38%;
+  height: 5.2%;
+}
+
+/* CARDDASS */
+.hit.gacha {
+  left: 52%;
+  top: 29.0%;
+  width: 38%;
+  height: 5.2%;
+}
