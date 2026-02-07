@@ -30,11 +30,14 @@ body{
 /* =====================
    Start Screen
 ===================== */
-#startScreen{
-  position: relative;
-  overflow: hidden;
-  background: radial-gradient(circle at top, #3a0f14 0%, #1b070a 40%, #000 100%);
+
+#startScreen {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* ← center だと下がる */
+  padding-top: 8px;        /* 微調整用 */
 }
+
 
 #startScreen h1{
   margin: 0;
