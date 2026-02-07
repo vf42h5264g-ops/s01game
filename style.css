@@ -363,3 +363,62 @@ button:active{ transform: scale(0.98); }
   0% { transform: translateX(-30%) rotate(10deg); }
   100% { transform: translateX(30%) rotate(10deg); }
 }
+
+/* ===== Dial hit area ===== */
+.hit.dial{
+  left: 26%;
+  top: 59.5%;
+  width: 48%;
+  height: 28%;
+  border-radius: 50%;
+}
+
+/* ===== Eject slot layer ===== */
+.eject{
+  position: absolute;
+  left: 16%;
+  top: 40.6%;
+  width: 68%;
+  height: 12.2%;
+  z-index: 12;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* 出てくるカード（要素はJSで生成） */
+.eject .cardOut{
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 46%;
+  aspect-ratio: 2.5 / 3.5; /* カードっぽい縦比率 */
+  transform: translate(-50%, 0) scale(0.98);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(0,0,0,.35));
+  box-shadow: 0 18px 35px rgba(0,0,0,.55);
+  opacity: 0;
+}
+
+/* ダイヤル回転中の演出（押した感） */
+.machine.is-rolling .hit.dial{
+  animation: dialSpin .85s cubic-bezier(.2,.8,.2,1);
+}
+
+@keyframes dialSpin{
+  0%   { transform: rotate(0deg) scale(1); }
+  35%  { transform: rotate(160deg) scale(1.02); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* カード輩出 */
+.eject .cardOut.pop{
+  animation: cardEject 1.05s cubic-bezier(.2,.9,.2,1) forwards;
+}
+
+@keyframes cardEject{
+  0%   { opacity: 0; transform: translate(-50%, 16px) scale(.95); }
+  18%  { opacity: 1; transform: translate(-50%, 2px)  scale(1.00); }
+  65%  { opacity: 1; transform: translate(-50%, -66px) scale(1.02); }
+  100% { opacity: 1; transform: translate(-50%, -56px) scale(1.02); }
+}
