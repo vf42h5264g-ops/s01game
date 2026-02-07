@@ -530,12 +530,20 @@ button:active{ transform: scale(0.98); }
 .machine-submodes .hit.sub.normal { left: 37.5%; top: 32.2%; width: 25%; height: 4.2%; }
 .machine-submodes .hit.sub.hard   { left: 64%; top: 32.2%; width: 25%; height: 4.2%; }
 
-/* 下段アイコン（4つ） */
-.hit.icon{ top: 93.1%; width: 10.5%; height: 4.8%; border-radius: 50%; }
-.hit.icon.shot   { left: 18.5%; }
-.hit.icon.help   { left: 37.0%; }
-.hit.icon.donate { left: 55.5%; }
-.hit.icon.sound  { left: 74.0%; }
+/* フットボタン共通 */
+.hit.icon {
+  top: 88.5%;          /* ← 下すぎたので上へ */
+  width: 12%;
+  height: 6%;
+  border-radius: 50%;
+}
+
+/* 個別位置 */
+.hit.icon.shot   { left: 20%; }
+.hit.icon.help   { left: 38%; }
+.hit.icon.donate { left: 56%; }
+.hit.icon.sound  { left: 74%; }
+
 
 /* POINTS 表示 */
 .machine-points{
