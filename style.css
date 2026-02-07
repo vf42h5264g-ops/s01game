@@ -1,233 +1,156 @@
 /* =====================
    Quattro Vageena : Last Call
-   style.css（競合なし・iPhone安定）
+   style.css（筐体Start + 既存Game UI）
 ===================== */
 
-/* Base */
+/* ========== Base ========== */
 * { box-sizing: border-box; }
-html, body { height: 100%; }
-body{
+
+html, body {
+  height: 100%;
   margin: 0;
-  color: #f5f1e8;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: #000;
   -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+body{
+  color: #f5f1e8;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .hidden { display: none !important; }
 
-/* Screen */
+/* 各画面（help/game/result共通） */
 .screen{
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 14px;
-  padding: 24px 16px;
+  padding: 16px;
 }
 
-/* =====================
-   Start Screen
-===================== */
-
-#startScreen {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start; /* ← center だと下がる */
-  padding-top: 8px;        /* 微調整用 */
-}
-
-
-#startScreen h1{
-  margin: 0;
-  font-size: 38px;
-  letter-spacing: 0.06em;
-  font-weight: 800;
-  text-align: center;
-}
-
-.subtitle{
-  margin-top: -6px;
-  font-size: 14px;
-  letter-spacing: 0.28em;
-  opacity: 0.9;
-}
-
-/* モードボタン */
-.modeBtns{
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  width: min(360px, 86vw);
-  margin-top: 10px;
-}
-
-.modeBtn{
-  user-select: none;
-  cursor: pointer;
-  padding: 16px 18px;
-  border-radius: 16px;
-  background: #e53935;
-  color: #fff;
-  text-align: center;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  box-shadow: 0 10px 22px rgba(0,0,0,0.35);
-  transition: transform 0.12s ease, filter 0.12s ease;
-}
-
-.modeBtn:active{
-  transform: scale(0.98);
-  filter: brightness(0.95);
-}
-
-/* NT-Dボタン */
-.modeBtn[data-mode="destroy"]{
-  border: 1px solid rgba(255,255,255,0.10);
-  color: #fff;
-  transition: color 3s linear, text-shadow 3s linear;
-}
-
-.modeBtn[data-mode="destroy"].charging{
-  color: #ff3bd4 !important;
-  text-shadow: 0 0 18px rgba(255, 60, 212, 0.55);
-}
-
-/* Start画面ネオン */
-#startScreen.neon{
-  background:
-    radial-gradient(circle at 20% 20%, rgba(255, 60, 60, 0.18) 0%, rgba(0,0,0,0) 45%),
-    radial-gradient(circle at 80% 30%, rgba(255, 0, 120, 0.10) 0%, rgba(0,0,0,0) 50%),
-    radial-gradient(circle at top, #4a1016 0%, #1b070a 40%, #000 100%);
-}
-
-#startScreen.neon::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-  background:
-    linear-gradient(180deg, rgba(255,0,80,0.10), rgba(0,0,0,0) 60%),
-    radial-gradient(circle at 50% 15%, rgba(255,60,60,0.22), rgba(0,0,0,0) 55%);
-  mix-blend-mode: screen;
-}
-
-#startScreen.neon h1,
-#startScreen.neon .subtitle{
-  text-shadow:
-    0 0 10px rgba(255, 40, 40, 0.25),
-    0 0 22px rgba(255, 0, 120, 0.18);
-}
-
-/* 1秒チカチカ（必要な時だけ .flicker を付ける） */
-@keyframes neonFlickerFast{
-  0%,100%{ filter: brightness(1); }
-  10%{ filter: brightness(1.18); }
-  12%{ filter: brightness(0.85); }
-  16%{ filter: brightness(1.28); }
-  20%{ filter: brightness(0.80); }
-  26%{ filter: brightness(1.22); }
-  40%{ filter: brightness(1.10); }
-  45%{ filter: brightness(0.92); }
-  55%{ filter: brightness(1.20); }
-}
-#startScreen.flicker{
-  animation: neonFlickerFast 1s linear infinite;
-}
-
-/* 下のテキスト（フッターに被らない位置） */
-.footerText{
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px + 74px + 10px);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  opacity: 0.7;
-  z-index: 300;
-  pointer-events: none;
-}
-
-/* =========================
-   フッターバー（下段4ボタン）
-========================= */
-
-/* 旧absolute/transform系の事故防止 */
-#shotBtn, #helpBtn, #donateBtn, #soundBtn{
-  position: static !important;
-  left: auto !important;
-  right: auto !important;
-  bottom: auto !important;
-  transform: none !important;
-}
-
-.footerBtns{
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-
-  width: min(92vw, 420px);
-  height: 74px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-evenly;
-  gap: 14px;
-
-  padding: 10px 14px;
-  border-radius: 22px;
-
-  background: rgba(0,0,0,0.45);
-  backdrop-filter: blur(6px);
-
-  z-index: 999;
-}
-
-.footerBtns button{
-  width: 56px;
-  height: 56px;
-  border-radius: 999px;
-
-  /* 中央寄せ */
-  display: grid;
-  place-items: center;
-
-  /* 絵文字ズレ対策 */
+/* ========== START (筐体) ========== */
+#startScreen{
+  height: 100dvh;
   padding: 0;
-  line-height: 1;
-  font-family: "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji", system-ui, -apple-system, sans-serif;
-  font-size: 26px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.10);
-  color: #fff;
+/* 筐体：上下余白を極力ゼロに */
+.machine{
+  position: relative;
+  height: 100dvh;
+  width: auto;
+  max-width: 100vw;
+  aspect-ratio: 1365 / 2048;
+}
 
+/* 画像は当たり判定を邪魔しない */
+.machine-img{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  border-radius: 18px;
+}
+
+/* 透明ボタン共通 */
+.hit{
+  position: absolute;
+  z-index: 10;
+  background: transparent;
+  border: 0;
+  padding: 0;
   cursor: pointer;
-  user-select: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 
-  box-shadow: 0 10px 24px rgba(0,0,0,0.35);
-  transition: transform 0.12s ease, filter 0.12s ease, background 0.12s ease;
+  /* ===== デバッグ枠：調整中はON ===== */
+  outline: 2px solid rgba(0,255,255,0.65);
 }
 
+/* ===== デバッグ枠を消す時はここをコメントアウト ===== */
+/* .hit{ outline: none; } */
 
+/* 上段4ボタン（調整済み値） */
+.hit.mem  { left: 10%; top: 22.8%; width: 38%; height: 5.2%; border-radius: 14px; }
+.hit.teq  { left: 52%; top: 22.8%; width: 38%; height: 5.2%; border-radius: 14px; }
+.hit.coin { left: 10%; top: 28.6%; width: 38%; height: 5.2%; border-radius: 14px; }
+.hit.gacha{ left: 52%; top: 28.6%; width: 38%; height: 5.2%; border-radius: 14px; }
 
-.footerBtns button:active{
-  transform: scale(0.92);
-  filter: brightness(1.05);
+/* MEMORY サブモード（表示時のみ） */
+.machine-submodes{
+  position: absolute;
+  inset: 0;
+  z-index: 11;
 }
 
-#donateBtn{
-  border-color: rgba(255,215,100,0.25);
-  background: rgba(255,215,100,0.16);
+.machine-submodes .hit.sub{
+  border-radius: 12px;
 }
 
-/* =====================
-   Help / Result / Game
-===================== */
+.machine-submodes .hit.sub.easy{
+  left: 10%;
+  top: 34.8%;
+  width: 25%;
+  height: 4.6%;
+}
+.machine-submodes .hit.sub.normal{
+  left: 37.5%;
+  top: 34.8%;
+  width: 25%;
+  height: 4.6%;
+}
+.machine-submodes .hit.sub.hard{
+  left: 65%;
+  top: 34.8%;
+  width: 25%;
+  height: 4.6%;
+}
+
+/* フット丸ボタン（画像の丸位置に合わせる） */
+.hit.icon{
+  top: 90.7%;
+  width: 11.5%;
+  height: 5.6%;
+  border-radius: 50%;
+}
+.hit.icon.shot   { left: 17.5%; }
+.hit.icon.help   { left: 36.0%; }
+.hit.icon.donate { left: 54.5%; }
+.hit.icon.sound  { left: 73.0%; }
+
+/* POINTS表示：A案（排出口下） */
+.machine-points{
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50.8%;
+  z-index: 9;
+  pointer-events: none;
+
+  text-align: center;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+
+  color: rgba(255,220,160,0.95);
+  text-shadow:
+    0 2px 4px rgba(0,0,0,0.85),
+    0 0 6px rgba(255,180,80,0.25);
+}
+
+/* startScreenのフッター文言は使わない（画像に焼き込み） */
+.machine-footer{ display: none; }
+
+/* ========== Help / Result / Game ========== */
 #helpScreen, #resultScreen, #gameScreen{
   background: radial-gradient(circle at top, #120507 0%, #000 65%);
 }
@@ -278,12 +201,19 @@ button:active{ transform: scale(0.98); }
   object-fit: cover;
 }
 
-/* Result mode label */
+/* Result */
 .resultMode{
   font-weight: 900;
   letter-spacing: 0.12em;
   opacity: 0.85;
   margin-bottom: 4px;
+}
+.resultPoints{
+  margin-top: 6px;
+  opacity: 0.9;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ffd36a;
 }
 
 /* ===== CoinToss (board内UI) ===== */
@@ -381,62 +311,6 @@ button:active{ transform: scale(0.98); }
 .glow2{ filter: drop-shadow(0 0 12px rgba(255,255,255,.30)) drop-shadow(0 0 22px rgba(255,0,120,.18)); }
 .glow3{ filter: drop-shadow(0 0 14px rgba(255,255,255,.35)) drop-shadow(0 0 28px rgba(0,200,255,.20)); }
 
-.subModes{
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-  margin-top: -6px; /* 親ボタンに少し近づける */
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
-.subModeBtn{
-  background: rgba(255,255,255,0.10);
-  border: 1px solid rgba(255,255,255,0.16);
-  box-shadow: none;
-}
-
-.globalPoints{
-  margin-top: -6px;
-  font-weight: 900;
-  letter-spacing: .10em;
-  opacity: .92;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(0,0,0,0.35);
-  backdrop-filter: blur(6px);
-}
-
-.subModes{
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: -6px;
-  padding: 0 10px 6px;
-}
-
-.subModeBtn{
-  background: rgba(255,255,255,0.10);
-  border: 1px solid rgba(255,255,255,0.16);
-  box-shadow: none;
-}
-
-/* サブが開いてる時に親ボタンをちょい強調したい場合（任意） */
-.modeBtn.isOpen{
-  filter: brightness(1.05);
-}
-
-.resultPoints{
-  margin-top: 6px;
-  opacity: 0.9;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: #ffd36a;
-}
-
 /* ===== CARDDASS ===== */
 .cdRoot { max-width: 980px; margin: 0 auto; padding: 16px; color: #fff; }
 .cdHeader { margin-bottom: 12px; }
@@ -487,168 +361,3 @@ button:active{ transform: scale(0.98); }
   0% { transform: translateX(-30%) rotate(10deg); }
   100% { transform: translateX(30%) rotate(10deg); }
 }
-
-/* START：筐体 */
-.machine{
-  position: relative;
-  width: min(420px, 92vw);
-  aspect-ratio: 1365 / 2048; /* 添付画像比率 */
-  margin: 0 auto;
-}
-
-.machine-img{
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 16px; /* 好みで */
-}
-
-.hit{
-  position: absolute;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  padding: 0;
-}
-
-/* デバッグ用：位置合わせ中だけONにする */
-/* .hit{ outline:2px solid rgba(0,255,255,.5); } */
-
-/* 4つのゲームボタン（※座標はあとで微調整） */
-.hit.mem  { left: 11%; top: 21.5%; width: 36%; height: 4.4%; }
-.hit.teq  { left: 53%; top: 21.5%; width: 36%; height: 4.4%; }
-.hit.coin { left: 11%; top: 26.8%; width: 36%; height: 4.4%; }
-.hit.gacha{ left: 53%; top: 26.8%; width: 36%; height: 4.4%; }
-
-/* サブモード領域（必要になったら出す） */
-.machine-submodes{ position:absolute; inset:0; }
-.machine-submodes .hit.sub{ border-radius: 10px; }
-/* 例：どこに出すかは画像に合わせて調整 */
-.machine-submodes .hit.sub.easy   { left: 11%; top: 32.2%; width: 25%; height: 4.2%; }
-.machine-submodes .hit.sub.normal { left: 37.5%; top: 32.2%; width: 25%; height: 4.2%; }
-.machine-submodes .hit.sub.hard   { left: 64%; top: 32.2%; width: 25%; height: 4.2%; }
-
-/* フットボタン共通 */
-.hit.icon {
-  top: 88.5%;          /* ← 下すぎたので上へ */
-  width: 12%;
-  height: 6%;
-  border-radius: 50%;
-}
-
-/* 個別位置 */
-.hit.icon.shot   { left: 20%; }
-.hit.icon.help   { left: 38%; }
-.hit.icon.donate { left: 56%; }
-.hit.icon.sound  { left: 74%; }
-
-
-/* POINTS 表示 */
-.machine-points{
-  position:absolute;
-  left: 0; right: 0;
-  top: 86.5%;
-  text-align:center;
-  font-weight: 700;
-  letter-spacing: .08em;
-  color: rgba(255,220,160,.95);
-  text-shadow: 0 2px 4px rgba(0,0,0,.8);
-  pointer-events:none;
-}
-
-/* フッタ文言 */
-.machine-footer{
-  position:absolute;
-  left:0; right:0;
-  top: 89.8%;
-  text-align:center;
-  font-size: 12px;
-  color: rgba(255,220,160,.85);
-  text-shadow: 0 2px 4px rgba(0,0,0,.8);
-  pointer-events:none;
-}
-
-/* デバッグ中だけON */
-.hit { outline: 2px solid rgba(0,255,255,.5); }
-
-.hit {
-  border-radius: 12px;
-}
-
-
-/* MEMORY-GAME */
-.hit.mem {
-  left: 10%;
-  top: 23.0%;
-  width: 38%;
-  height: 5.2%;
-}
-
-/* TEQUILA-GAME */
-.hit.teq {
-  left: 52%;
-  top: 23.0%;
-  width: 38%;
-  height: 5.2%;
-}
-
-/* COIN-TOSS */
-.hit.coin {
-  left: 10%;
-  top: 29.0%;
-  width: 38%;
-  height: 5.2%;
-}
-
-/* CARDDASS */
-.hit.gacha {
-  left: 52%;
-  top: 29.0%;
-  width: 38%;
-  height: 5.2%;
-}
-
-.hit.icon {
-  top: 92.3%;
-  width: 11%;
-  height: 5.2%;
-}
-
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  background: #000; /* 余白が出ても黒で統一 */
-}
-
-#startScreen {
-  min-height: 100dvh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #000;
-}
-
-/* ★ 高さ指定をやめる */
-.machine {
-  position: relative;
-  width: min(92vw, 420px);   /* ← スマホ基準 */
-  aspect-ratio: 1365 / 2048;
-}
-
-/* 画像は収めるだけ */
-.machine-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  pointer-events: none;
-}
-
-
-/* 当たり判定は必ず前面へ */
-.hit { z-index: 10; }
-.machine-points, .machine-footer { z-index: 9; pointer-events: none; }
