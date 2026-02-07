@@ -563,7 +563,10 @@ button:active{ transform: scale(0.98); }
 }
 
 /* デバッグ中だけON */
-.hit { outline: 2px solid rgba(0,255,255,.5); }
+.hit {
+  border-radius: 12px;
+}
+
 
 /* MEMORY-GAME */
 .hit.mem {
@@ -594,5 +597,11 @@ button:active{ transform: scale(0.98); }
   left: 52%;
   top: 29.0%;
   width: 38%;
+  height: 5.2%;
+}
+
+.hit.icon {
+  top: 92.3%;
+  width: 11%;
   height: 5.2%;
 }
