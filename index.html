@@ -10,9 +10,39 @@
 
 <!-- ===== START ===== -->
 <div id="startScreen" class="screen">
-  <h1>Quattro Vageena</h1>
-  <div class="subtitle">— Last Call —</div>
-  <div id="globalPoints" class="globalPoints">POINTS: 0.0</div>
+  <div class="machine">
+    <!-- 背景（筐体） -->
+    <img class="machine-img" src="img/start_machine.png" alt="Quattro Vageena Machine" />
+
+    <!-- タイトル（画像に焼き込み済なら消してOK） -->
+    <!-- <div class="machine-title">Quattro Vageena<br><span>— Last Call —</span></div> -->
+
+    <!-- POINTS（既存 id を維持） -->
+    <div id="globalPoints" class="machine-points">POINTS: 0.0</div>
+
+    <!-- 透明当たり判定：モードボタン（既存 data-mode を維持） -->
+    <button class="hit mem"  data-mode="memory"  aria-label="MEMORY-GAME"></button>
+    <button class="hit teq"  data-mode="destroy" aria-label="TEQUILA-GAME"></button>
+    <button class="hit coin" data-mode="cointoss" aria-label="COIN-TOSS"></button>
+    <button class="hit gacha" data-mode="gacha" aria-label="CARDDASS"></button>
+
+    <!-- memory サブモード（最初は非表示：必要なら後で表示切替） -->
+    <div id="memorySubModes" class="subModes hidden machine-submodes">
+      <button class="hit sub easy"   data-mode="easy"   aria-label="EASY"></button>
+      <button class="hit sub normal" data-mode="normal" aria-label="NORMAL"></button>
+      <button class="hit sub hard"   data-mode="hard"   aria-label="HARD"></button>
+    </div>
+
+    <!-- 下段アイコン（既存 id を維持） -->
+    <button id="shotBtn"   class="hit icon shot"   aria-label="Shot"></button>
+    <button id="helpBtn"   class="hit icon help"   aria-label="Help"></button>
+    <button id="donateBtn" class="hit icon donate" aria-label="Donate"></button>
+    <button id="soundBtn"  class="hit icon sound"  aria-label="Sound"></button>
+
+    <div class="machine-footer">One last game before closing.</div>
+  </div>
+</div>
+
 
 <div class="modeBtns">
 
