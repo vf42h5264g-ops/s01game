@@ -41,25 +41,27 @@ body{
   align-items: center;
 }
 
-/* 筐体：上下余白を極力ゼロに */
+/* 画面内に収まる最大サイズで“比率維持” */
 .machine{
   position: relative;
-  height: 100dvh;
-  width: auto;
-  max-width: 100vw;
+
+  /* 幅と高さ、両方を上限にするのがコツ */
+  width: min(100vw, calc(100dvh * (1365 / 2048)));
+  height: auto;
+
   aspect-ratio: 1365 / 2048;
 }
 
-/* 画像は当たり判定を邪魔しない */
 .machine-img{
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;     /* ← containだと余白が出やすい */
   pointer-events: none;
   border-radius: 18px;
 }
+
 
 /* 透明ボタン共通 */
 .hit{
