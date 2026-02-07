@@ -424,48 +424,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Start Screen: MEMORY-GAME entry (open/close sub modes, NOT start) ---
   const startRoot = screens.start;
+  // =========================
+// Events
+// =========================
 
-  const memoryEntry = startRoot.querySelector('.modeBtn[data-mode="memory"]');
-  bindTap(memoryEntry, () => {
-    ensureAudioUnlocked();
+// --- Start Screen: unified handler (works for .modeBtn and .hit buttons) ---
+const startRoot = screens.start;
+
+// memory のトグル判定（memoryボタンだけは「開始」じゃなくて「サブ表示」）
+function isMemoryEntry(el) {
+  return el?.dataset?.mode && String(el.dataset.mode).toLowerCase() === "memory";
+}
+
+bindTap(startRoot, (e) => {
+  // startRoot 自体に bindTap してるので、e.target から拾う
+  const target = e.target.closest("[data-mode]");
+  if (!target) return;
+
+  ensureAudioUnlocked();
+
+  const raw = target.dataset.mode;
+
+  // MEMORY-GAME は開始せず、サブモード開閉
+  if (String(raw).toLowerCase() === "memory") {
     memorySubModes?.classList.toggle("hidden");
-  });
+    return;
+  }
 
-  // --- Start Screen: Memory sub modes (start memory with selected difficulty) ---
-  startRoot.querySelectorAll("#memorySubModes .subModeBtn").forEach((btn) => {
-    bindTap(btn, () => {
-      ensureAudioUnlocked();
-      const m = normalizeMode(btn.dataset.mode); // easy/normal/hard
-      if (!m) return;
-      currentMode = m;
-      memorySubModes?.classList.add("hidden");
-      startSelectedMode();
-    });
-  });
+  // サブモード (easy/normal/hard) など
+  const m = normalizeMode(raw);
+  if (!m) return;
 
-  // --- Start Screen: Other games (start directly) ---
-  const tequilaBtn = startRoot.querySelector('.modeBtn[data-mode="destroy"]');
-  bindTap(tequilaBtn, () => {
-    ensureAudioUnlocked();
-    currentMode = "destroy";
-    memorySubModes?.classList.add("hidden");
-    startSelectedMode();
-  });
+  currentMode = m;
 
-  const coinBtn = startRoot.querySelector('.modeBtn[data-mode="cointoss"]');
-  bindTap(coinBtn, () => {
-    ensureAudioUnlocked();
-    currentMode = "cointoss";
-    memorySubModes?.classList.add("hidden");
-    startSelectedMode();
-  });
+  // memoryサブは閉じる
+  memorySubModes?.classList.add("hidden");
 
-  const gachaBtn = startRoot.querySelector('.modeBtn[data-mode="gacha"]');
-  bindTap(gachaBtn, () => {
-    ensureAudioUnlocked();
-    currentMode = "gacha";
-    memorySubModes?.classList.add("hidden");
-    // ガチャはカウントダウン無しが気持ちいい
+  // ガチャはカウントダウン無しが気持ちいい（現行踏襲）
+  if (currentMode === "gacha") {
     setScreen("game");
     destroyCurrentGame();
     hardCleanup();
@@ -473,52 +469,57 @@ document.addEventListener("DOMContentLoaded", () => {
     if (missArea) missArea.textContent = "";
     currentGame = games[currentMode];
     currentGame.start(ctx, { mode: currentMode });
-  });
+    return;
+  }
 
-  // --- Help ---
-  bindTap(helpBtn, () => {
-    ensureAudioUnlocked();
-    setScreen("help");
-  });
+  // それ以外は通常開始
+  startSelectedMode();
+});
 
-  bindTap(backFromHelpBtn, () => {
-    ensureAudioUnlocked();
-    setScreen("start");
-  });
+// --- Help ---
+bindTap(helpBtn, () => {
+  ensureAudioUnlocked();
+  setScreen("help");
+});
 
-  // --- Sound ---
-  bindTap(soundBtn, () => {
-    ensureAudioUnlocked();
-    soundEnabled = !soundEnabled;
-    renderSoundIcon();
-    try {
-      localStorage.setItem("soundEnabled", soundEnabled ? "1" : "0");
-    } catch {}
-  });
+bindTap(backFromHelpBtn, () => {
+  ensureAudioUnlocked();
+  setScreen("start");
+});
 
-  // --- Result Buttons ---
-  bindTap(backBtn, () => {
-    // モード選択 = スタートへ戻る（ここは絶対に goStart）
-    ensureAudioUnlocked();
-    goStart();
-  });
+// --- Sound ---
+bindTap(soundBtn, () => {
+  ensureAudioUnlocked();
+  soundEnabled = !soundEnabled;
+  renderSoundIcon();
+  try {
+    localStorage.setItem("soundEnabled", soundEnabled ? "1" : "0");
+  } catch {}
+});
 
-  bindTap(retryBtn, () => {
-    // もう1回 = 同じモードでやり直し
-    ensureAudioUnlocked();
-    startSelectedMode();
-  });
+// --- Result Buttons ---
+bindTap(backBtn, () => {
+  ensureAudioUnlocked();
+  goStart();
+});
 
-  // --- Footer ---
-  bindTap(shotBtn, () => {
-    ensureAudioUnlocked();
-    playSfx("go");
-  });
+bindTap(retryBtn, () => {
+  ensureAudioUnlocked();
+  startSelectedMode();
+});
 
-  bindTap(donateBtn, () => {
-    ensureAudioUnlocked();
-    alert("支援ありがとうございます！（仮）");
-  });
+// --- Footer ---
+bindTap(shotBtn, () => {
+  ensureAudioUnlocked();
+  playSfx("go");
+});
+
+bindTap(donateBtn, () => {
+  ensureAudioUnlocked();
+  alert("支援ありがとうございます！（仮）");
+});
+
+ 
 
   // =========================
   // init
