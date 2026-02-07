@@ -26,6 +26,12 @@
     <button class="hit coin" data-mode="cointoss" aria-label="COIN-TOSS"></button>
     <button class="hit gacha" data-mode="gacha" aria-label="CARDDASS"></button>
 
+    <!-- 排出口（カードが出る演出レイヤー） -->
+    <div class="eject" aria-hidden="true"></div>
+
+    <!-- ダイヤルの当たり判定 -->
+    <button class="hit dial" data-action="dial" aria-label="Dial to draw"></button>
+
     <!-- memory サブモード（最初は非表示：必要なら後で表示切替） -->
     <div id="memorySubModes" class="subModes hidden machine-submodes">
       <button class="hit sub easy"   data-mode="easy"   aria-label="EASY"></button>
