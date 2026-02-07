@@ -24,7 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const resultPoints = document.getElementById("resultPoints");
   const timeText = document.getElementById("timeText");
 
-  // footer buttons
+  // footer buttons (start screen icons)
   const shotBtn = document.getElementById("shotBtn");
   const helpBtn = document.getElementById("helpBtn");
   const donateBtn = document.getElementById("donateBtn");
@@ -71,7 +71,6 @@ document.addEventListener("DOMContentLoaded", () => {
     el.textContent = `POINTS: ${Math.floor(Number(totalPoints || 0))}`;
   }
 
-
   // =========================
   // Screen switch
   // =========================
@@ -79,7 +78,6 @@ document.addEventListener("DOMContentLoaded", () => {
     Object.values(screens).forEach((s) => s && s.classList.add("hidden"));
     screens[name]?.classList.remove("hidden");
 
-    // ★スタートへ戻るたびにポイント表示同期
     if (name === "start") {
       renderPoints();
     }
@@ -101,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
   renderSoundIcon();
 
   // =========================
-  // SFX (HTMLAudio stable)
+  // SFX
   // =========================
   const SFX = {
     beep: new Audio("sound/beep.wav"),
@@ -123,20 +121,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const a = SFX.beep;
     const v = a.volume;
     a.volume = 0.0;
-    try {
-      a.currentTime = 0;
-    } catch {}
+    try { a.currentTime = 0; } catch {}
     a.play()
       .then(() => {
         a.pause();
-        try {
-          a.currentTime = 0;
-        } catch {}
+        try { a.currentTime = 0; } catch {}
         a.volume = v;
       })
-      .catch(() => {
-        a.volume = v;
-      });
+      .catch(() => { a.volume = v; });
   }
 
   function playSfx(key) {
@@ -146,9 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const a = base.cloneNode();
     a.volume = base.volume;
-    try {
-      a.currentTime = 0;
-    } catch {}
+    try { a.currentTime = 0; } catch {}
     a.play().catch(() => {});
   }
 
@@ -219,12 +209,11 @@ document.addEventListener("DOMContentLoaded", () => {
     easy: MemoryGame,
     normal: MemoryGame,
     hard: MemoryGame,
-    destroy: NTDGame, // HTML側 data-mode="destroy"（TEQUILA-GAME）に合わせる
+    destroy: NTDGame,
     cointoss: CoinTossGame,
-    gacha: GachaGame, // ★追加
+    gacha: GachaGame,
   };
 
-  // data-mode の吸収
   function normalizeMode(raw) {
     const m = String(raw || "").toLowerCase().trim();
 
@@ -236,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (m === "easy" || m === "normal" || m === "hard" || m === "destroy" || m === "cointoss" || m === "gacha") return m;
 
-    // 重要：memory は「開始しない」のでここでeasyに丸めない（呼び元で分岐）
+    // memory は開始しない
     return "";
   }
 
@@ -249,10 +238,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (mode === "hard") return "HARD";
     if (mode === "destroy") return "NT-D";
     if (mode === "cointoss") return "COIN TOSS";
+    if (mode === "gacha") return "GACHA";
     return String(mode || "");
   }
 
-  // overlay 等の残骸を強制で消す
   function hardCleanup() {
     document.getElementById("tequilaOverlay")?.remove();
     document.getElementById("donateOverlay")?.remove();
@@ -260,15 +249,60 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // =========================
   // Tap helper（pointerdown + click）
+  // async handler もOKにしてる
   // =========================
   function bindTap(el, handler) {
     if (!el) return;
     const h = (e) => {
       e.preventDefault?.();
-      handler(e);
+      try {
+        const ret = handler(e);
+        if (ret && typeof ret.then === "function") ret.catch(() => {});
+      } catch {}
     };
     el.addEventListener("pointerdown", h, { passive: false });
     el.addEventListener("click", h, { passive: false });
+  }
+
+  // =========================
+  // Dial animation (Start screen)
+  // =========================
+  let dialRolling = false;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function playDialEjectAnimation() {
+    if (dialRolling) return;
+    dialRolling = true;
+
+    const machine = document.querySelector("#startScreen .machine");
+    const eject = document.querySelector("#startScreen .eject");
+    if (!machine || !eject) {
+      dialRolling = false;
+      return;
+    }
+
+    machine.classList.add("is-rolling");
+    playSfx("go");
+
+    await wait(220);
+
+    const card = document.createElement("div");
+    card.className = "cardOut";
+    eject.appendChild(card);
+
+    // 強制リフロー → アニメ開始
+    void card.offsetHeight;
+    card.classList.add("pop");
+
+    // 演出時間待ち
+    await wait(900);
+    machine.classList.remove("is-rolling");
+
+    // ちょい残して消す
+    await wait(650);
+    card.remove();
+
+    dialRolling = false;
   }
 
   // =========================
@@ -289,57 +323,54 @@ document.addEventListener("DOMContentLoaded", () => {
     },
 
     // ---- Points API ----
-  addPoints(n) {
-    const add = Math.floor(Number(n) || 0);
-    if (add <= 0) return totalPoints;
+    addPoints(n) {
+      const add = Math.floor(Number(n) || 0);
+      if (add <= 0) return totalPoints;
 
-    totalPoints = Math.floor(Number(totalPoints) || 0) + add;
-    writeInt(LS_POINTS, totalPoints);
-    renderPoints();
-    return totalPoints;
-  },
+      totalPoints = Math.floor(Number(totalPoints) || 0) + add;
+      writeInt(LS_POINTS, totalPoints);
+      renderPoints();
+      return totalPoints;
+    },
 
+    spendPoints(n) {
+      const cost = Number(n) || 0;
+      if (cost <= 0) return false;
+      if (totalPoints < cost) return false;
 
-  spendPoints(n) {
-    const cost = Number(n) || 0;
-    if (cost <= 0) return false;
-    if (totalPoints < cost) return false;
+      totalPoints -= cost;
+      writeInt(LS_POINTS, totalPoints);
+      renderPoints();
+      return true;
+    },
 
-    totalPoints -= cost;
-    writeInt(LS_POINTS, totalPoints);
+    getPoints() {
+      return totalPoints;
+    },
 
-    renderPoints();
-    return true;
-  },
+    showPointGain(n) {
+      const gain = Number(n) || 0;
+      if (!gain) return;
 
-  getPoints() {
-    return totalPoints;
-  },
+      const el = document.createElement("div");
+      el.textContent = `+${gain} P`;
+      el.style.position = "fixed";
+      el.style.left = "50%";
+      el.style.top = "18%";
+      el.style.transform = "translateX(-50%)";
+      el.style.padding = "10px 14px";
+      el.style.borderRadius = "14px";
+      el.style.background = "rgba(0,0,0,0.72)";
+      el.style.border = "1px solid rgba(255,255,255,0.18)";
+      el.style.color = "#ffd36a";
+      el.style.fontWeight = "900";
+      el.style.letterSpacing = "0.06em";
+      el.style.zIndex = "99999";
+      el.style.pointerEvents = "none";
+      document.body.appendChild(el);
 
-  showPointGain(n) {
-    const gain = Number(n) || 0;
-    if (!gain) return;
-
-    const el = document.createElement("div");
-    el.textContent = `+${gain} P`;
-    el.style.position = "fixed";
-    el.style.left = "50%";
-    el.style.top = "18%";
-    el.style.transform = "translateX(-50%)";
-    el.style.padding = "10px 14px";
-    el.style.borderRadius = "14px";
-    el.style.background = "rgba(0,0,0,0.72)";
-    el.style.border = "1px solid rgba(255,255,255,0.18)";
-    el.style.color = "#ffd36a";
-    el.style.fontWeight = "900";
-    el.style.letterSpacing = "0.06em";
-    el.style.zIndex = "99999";
-    el.style.pointerEvents = "none";
-    document.body.appendChild(el);
-
-    setTimeout(() => el.remove(), 1100);
-  },
-
+      setTimeout(() => el.remove(), 1100);
+    },
 
     // ---- Result UI ----
     showResult({ title, timeSec, mode, pointsEarned = 0 }) {
@@ -385,9 +416,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (missArea) missArea.textContent = "";
     countdownEl.classList.add("hidden");
 
-    // ★memoryサブメニューは閉じておく
     memorySubModes?.classList.add("hidden");
-
     setScreen("start");
   }
 
@@ -413,6 +442,13 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    // ガチャもカウントダウン無し（好みで）
+    if (currentMode === "gacha") {
+      setScreen("game");
+      currentGame.start(ctx, { mode: currentMode });
+      return;
+    }
+
     startCountdown(() => {
       currentGame.start(ctx, { mode: currentMode });
     });
@@ -422,95 +458,83 @@ document.addEventListener("DOMContentLoaded", () => {
   // Events
   // =========================
 
-  // --- Start Screen: MEMORY-GAME entry (open/close sub modes, NOT start) ---
+  // Start Screen: event delegation
   const startRoot = screens.start;
-  // =========================
-// Events
-// =========================
 
-// --- Start Screen: event delegation (works for .hit buttons) ---
-const startRoot = screens.start;
+  bindTap(startRoot, async (e) => {
+    // 1) dial action
+    const act = e.target.closest("[data-action]");
+    if (act?.dataset?.action === "dial") {
+      ensureAudioUnlocked();
+      await playDialEjectAnimation();
+      return;
+    }
 
-bindTap(startRoot, (e) => {
-  const target = e.target.closest("[data-mode]");
-  if (!target) return;
+    // 2) normal modes
+    const target = e.target.closest("[data-mode]");
+    if (!target) return;
 
-  ensureAudioUnlocked();
+    ensureAudioUnlocked();
 
-  const raw = target.dataset.mode;
+    const raw = target.dataset.mode;
 
-  // MEMORY は開始せずサブモード開閉
-  if (String(raw).toLowerCase() === "memory") {
-    memorySubModes?.classList.toggle("hidden");
-    return;
-  }
+    // MEMORY は開始せずサブモード開閉
+    if (String(raw).toLowerCase() === "memory") {
+      memorySubModes?.classList.toggle("hidden");
+      return;
+    }
 
-  // easy/normal/hard/destroy/cointoss/gacha
-  const m = normalizeMode(raw);
-  if (!m) return;
+    const m = normalizeMode(raw);
+    if (!m) return;
 
-  currentMode = m;
-  memorySubModes?.classList.add("hidden");
+    currentMode = m;
+    memorySubModes?.classList.add("hidden");
 
-  // ガチャはカウントダウン無し（現状踏襲）
-  if (currentMode === "gacha") {
-    setScreen("game");
-    destroyCurrentGame();
-    hardCleanup();
-    board.innerHTML = "";
-    if (missArea) missArea.textContent = "";
-    currentGame = games[currentMode];
-    currentGame.start(ctx, { mode: currentMode });
-    return;
-  }
+    startSelectedMode();
+  });
 
-  startSelectedMode();
-});
+  // Help
+  bindTap(helpBtn, () => {
+    ensureAudioUnlocked();
+    setScreen("help");
+  });
 
-// --- Help ---
-bindTap(helpBtn, () => {
-  ensureAudioUnlocked();
-  setScreen("help");
-});
+  bindTap(backFromHelpBtn, () => {
+    ensureAudioUnlocked();
+    setScreen("start");
+  });
 
-bindTap(backFromHelpBtn, () => {
-  ensureAudioUnlocked();
-  setScreen("start");
-});
+  // Sound
+  bindTap(soundBtn, () => {
+    ensureAudioUnlocked();
+    soundEnabled = !soundEnabled;
+    renderSoundIcon();
+    try {
+      localStorage.setItem("soundEnabled", soundEnabled ? "1" : "0");
+    } catch {}
+  });
 
-// --- Sound ---
-bindTap(soundBtn, () => {
-  ensureAudioUnlocked();
-  soundEnabled = !soundEnabled;
-  renderSoundIcon();
-  try {
-    localStorage.setItem("soundEnabled", soundEnabled ? "1" : "0");
-  } catch {}
-});
+  // Result Buttons
+  bindTap(backBtn, () => {
+    ensureAudioUnlocked();
+    goStart();
+  });
 
-// --- Result Buttons ---
-bindTap(backBtn, () => {
-  ensureAudioUnlocked();
-  goStart();
-});
+  bindTap(retryBtn, () => {
+    ensureAudioUnlocked();
+    startSelectedMode();
+  });
 
-bindTap(retryBtn, () => {
-  ensureAudioUnlocked();
-  startSelectedMode();
-});
+  // Footer
+  bindTap(shotBtn, () => {
+    ensureAudioUnlocked();
+    playSfx("go");
+  });
 
-// --- Footer ---
-bindTap(shotBtn, () => {
-  ensureAudioUnlocked();
-  playSfx("go");
-});
-
-bindTap(donateBtn, () => {
-  ensureAudioUnlocked();
-  alert("支援ありがとうございます！（仮）");
-});
-
- 
+  bindTap(donateBtn, () => {
+    ensureAudioUnlocked();
+    alert("支援ありがとうございます！（仮）");
+  });
 
   // =========================
   // init
@@ -518,6 +542,7 @@ bindTap(donateBtn, () => {
   renderPoints();
   setScreen("start");
 });
+
 
 
 
